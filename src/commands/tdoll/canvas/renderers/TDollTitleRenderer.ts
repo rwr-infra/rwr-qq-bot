@@ -36,17 +36,30 @@ export class TDollTitleRenderer {
 
         // 渲染 "No."
         context.fillStyle = CANVAS_STYLE.TEXT_COLOR;
-        context.fillText(staticSection, CANVAS_STYLE.PADDING * 2, this.renderStartY);
+        context.fillText(
+            staticSection,
+            CANVAS_STYLE.PADDING * 2,
+            this.renderStartY,
+        );
         const staticSectionWidth = context.measureText(staticSection).width;
 
         // 渲染 ID 数字
-        context.fillStyle = CANVAS_STYLE.HIGHLIGHT_COLOR;
-        context.fillText(noSection, CANVAS_STYLE.PADDING * 2 + staticSectionWidth, this.renderStartY);
+        context.fillStyle = '#f97316';
+        context.fillText(
+            noSection,
+            CANVAS_STYLE.PADDING * 2 + staticSectionWidth,
+            this.renderStartY,
+        );
         const idSectionWidth = context.measureText(noSection).width;
 
         // 渲染名称（带高亮）
-        const startX = CANVAS_STYLE.PADDING * 2 + staticSectionWidth + idSectionWidth;
-        const nameWidth = this.renderNameWithHighlight(context, staticSection2, startX);
+        const startX =
+            CANVAS_STYLE.PADDING * 2 + staticSectionWidth + idSectionWidth;
+        const nameWidth = this.renderNameWithHighlight(
+            context,
+            staticSection2,
+            startX,
+        );
 
         this.renderStartY += CANVAS_STYLE.LINE_HEIGHT;
 
@@ -59,7 +72,7 @@ export class TDollTitleRenderer {
     private renderNameWithHighlight(
         context: Canvas2DContext,
         name: string,
-        startX: number
+        startX: number,
     ): number {
         if (!this.query || this.query === 'random') {
             context.fillStyle = CANVAS_STYLE.TEXT_COLOR;
@@ -78,10 +91,20 @@ export class TDollTitleRenderer {
         }
 
         // 计算高亮位置
-        const { before, match, after } = this.calculateHighlightSegments(name, queryIndex, processedQuery.length);
+        const { before, match, after } = this.calculateHighlightSegments(
+            name,
+            queryIndex,
+            processedQuery.length,
+        );
 
         // 渲染高亮文本
-        return this.renderHighlightedText(context, before, match, after, startX);
+        return this.renderHighlightedText(
+            context,
+            before,
+            match,
+            after,
+            startX,
+        );
     }
 
     /**
@@ -90,7 +113,7 @@ export class TDollTitleRenderer {
     private calculateHighlightSegments(
         name: string,
         queryIndex: number,
-        queryLength: number
+        queryLength: number,
     ): { before: string; match: string; after: string } {
         let matchStartIndex = 0;
         let matchEndIndex = 0;
@@ -128,7 +151,7 @@ export class TDollTitleRenderer {
         before: string,
         match: string,
         after: string,
-        startX: number
+        startX: number,
     ): number {
         // 渲染前段
         context.fillStyle = CANVAS_STYLE.TEXT_COLOR;
@@ -142,7 +165,11 @@ export class TDollTitleRenderer {
 
         // 渲染后段
         context.fillStyle = CANVAS_STYLE.TEXT_COLOR;
-        context.fillText(after, startX + beforeWidth + matchWidth, this.renderStartY);
+        context.fillText(
+            after,
+            startX + beforeWidth + matchWidth,
+            this.renderStartY,
+        );
 
         return beforeWidth + matchWidth + context.measureText(after).width;
     }
