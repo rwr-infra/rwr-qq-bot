@@ -8,6 +8,7 @@ interface CacheEntry {
     image: ImageLike;
     lastAccessed: number;
     accessCount: number;
+    persistent: boolean;
 }
 
 /**
@@ -59,7 +60,9 @@ export class CanvasImgService {
     /**
      * 获取单例实例
      */
-    static getInstance(config?: Partial<CanvasImgServiceConfig>): CanvasImgService {
+    static getInstance(
+        config?: Partial<CanvasImgServiceConfig>,
+    ): CanvasImgService {
         if (!CanvasImgService.instance) {
             CanvasImgService.instance = new CanvasImgService(config);
         }
@@ -79,14 +82,20 @@ export class CanvasImgService {
     /**
      * 添加图片到缓存
      */
-    async addImg(path: string): Promise<void> {
+    async addImg(path: string, persistent = false): Promise<void> {
         if (this.cache.has(path)) {
             logger.debug(`[CanvasImgService] Image already cached: ${path}`);
+            if (persistent) {
+                const entry = this.cache.get(path);
+                if (entry) {
+                    entry.persistent = true;
+                }
+            }
             this.touch(path);
             return;
         }
 
-        await this.loadImage(path);
+        await this.loadImage(path, persistent);
     }
 
     /**
@@ -102,6 +111,10 @@ export class CanvasImgService {
 
         // 检查是否过期
         if (this.isExpired(entry)) {
+            if (entry.persistent) {
+                this.touch(path);
+                return entry.image;
+            }
             logger.debug(`[CanvasImgService] Image expired: ${path}`);
             this.cache.delete(path);
             this.stats.evictions++;
@@ -133,6 +146,9 @@ export class CanvasImgService {
         const now = Date.now();
 
         for (const [path, entry] of this.cache.entries()) {
+            if (entry.persistent) {
+                continue;
+            }
             if (now - entry.lastAccessed > this.config.cacheTTL) {
                 this.cache.delete(path);
                 removed++;
@@ -141,7 +157,9 @@ export class CanvasImgService {
         }
 
         if (removed > 0) {
-            logger.info(`[CanvasImgService] Cleaned up ${removed} expired images`);
+            logger.info(
+                `[CanvasImgService] Cleaned up ${removed} expired images`,
+            );
         }
 
         return removed;
@@ -167,7 +185,7 @@ export class CanvasImgService {
     /**
      * 加载图片
      */
-    private async loadImage(path: string): Promise<void> {
+    private async loadImage(path: string, persistent = false): Promise<void> {
         // 检查缓存是否已满，如果满了先清理
         if (this.cache.size >= this.config.maxCacheSize) {
             this.evictLRU();
@@ -180,12 +198,16 @@ export class CanvasImgService {
                 image,
                 lastAccessed: Date.now(),
                 accessCount: 1,
+                persistent,
             });
 
             this.stats.loads++;
             logger.debug(`[CanvasImgService] Image loaded: ${path}`);
         } catch (error) {
-            logger.error(`[CanvasImgService] Failed to load image: ${path}`, error);
+            logger.error(
+                `[CanvasImgService] Failed to load image: ${path}`,
+                error,
+            );
             throw error;
         }
     }
@@ -223,7 +245,9 @@ export class CanvasImgService {
         if (oldest) {
             this.cache.delete(oldest.path);
             this.stats.evictions++;
-            logger.debug(`[CanvasImgService] Evicted LRU image: ${oldest.path}`);
+            logger.debug(
+                `[CanvasImgService] Evicted LRU image: ${oldest.path}`,
+            );
         }
     }
 

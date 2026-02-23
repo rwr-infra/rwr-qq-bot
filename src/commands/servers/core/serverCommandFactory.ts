@@ -58,7 +58,10 @@ export function createServerCommand(
                 logger.info(
                     `[${config.name}] Initializing canvas with background image`,
                 );
-                await CanvasImgService.getInstance().addImg(env.OUTPUT_BG_IMG);
+                await CanvasImgService.getInstance().addImg(
+                    env.OUTPUT_BG_IMG,
+                    true,
+                );
             }
         },
 

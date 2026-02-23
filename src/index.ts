@@ -8,6 +8,7 @@ import { registerRoutes } from './routes';
 import { gracefulShutdown } from './shutdown';
 import { loadEnv } from './utils/env';
 import { getDirname } from './utils/esm';
+import { CanvasImgService } from './services/canvasImg.service';
 
 // 创建一个启动函数
 async function startServer() {
@@ -49,6 +50,10 @@ async function startServer() {
     });
 
     const env = loadEnv();
+
+    if (env.OUTPUT_BG_IMG) {
+        await CanvasImgService.getInstance().addImg(env.OUTPUT_BG_IMG, true);
+    }
 
     RemoteService.init(env);
 

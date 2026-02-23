@@ -119,7 +119,7 @@ describe('serverCommandFactory', () => {
             const command = createServerCommand(config, renderFn);
             await command.init(mockEnv);
 
-            expect(addImgSpy).toHaveBeenCalledWith('/path/to/bg.png');
+            expect(addImgSpy).toHaveBeenCalledWith('/path/to/bg.png', true);
         });
 
         it('should not initialize canvas background when OUTPUT_BG_IMG is not set', async () => {
