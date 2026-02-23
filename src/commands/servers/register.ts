@@ -41,7 +41,10 @@ function createServerCommand(
         isAdmin: config.isAdmin ?? false,
         init: async (env: GlobalEnv) => {
             if (env.OUTPUT_BG_IMG) {
-                await CanvasImgService.getInstance().addImg(env.OUTPUT_BG_IMG);
+                await CanvasImgService.getInstance().addImg(
+                    env.OUTPUT_BG_IMG,
+                    true,
+                );
             }
             if (initFn) await initFn(env);
         },
@@ -102,7 +105,10 @@ export const WhereIsCommandRegister: IRegister = {
     timesInterval: 5,
     init: async (env: GlobalEnv): Promise<void> => {
         if (env.OUTPUT_BG_IMG) {
-            await CanvasImgService.getInstance().addImg(env.OUTPUT_BG_IMG);
+            await CanvasImgService.getInstance().addImg(
+                env.OUTPUT_BG_IMG,
+                true,
+            );
         }
     },
     parseParams: (msg: string) => {
