@@ -14,7 +14,7 @@ export class RemoteService {
             baseURL: remoteUrl,
             timeout: 10 * 1000,
             headers: {
-                'Authorization': `Bearer ${token}`,
+                Authorization: `Bearer ${token}`,
             },
         });
 
@@ -41,7 +41,10 @@ export class RemoteService {
 
     static init(env: GlobalEnv) {
         if (!RemoteService.selfInst) {
-            RemoteService.selfInst = new RemoteService(env.REMOTE_URL, env.TOKEN);
+            RemoteService.selfInst = new RemoteService(
+                env.REMOTE_URL,
+                env.TOKEN,
+            );
         }
     }
 
