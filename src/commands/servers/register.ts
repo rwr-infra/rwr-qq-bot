@@ -20,6 +20,28 @@ import { AnalysticsHoursTask } from './tasks/analyticsHoursTask';
 import { parseIgnoreSpace } from '../../utils/cmd';
 import { MapsDataService } from './services/mapsData.service';
 import { CanvasImgService } from '../../services/canvasImg.service';
+import { serverCommandCache, ApiResult } from '../../services/serverCommandCache.service';
+import { GlobalEnv, MsgExecCtx, IRegister } from '../../types';
+import { getStaticHttpPath } from '../../utils/cmdreq';
+import {
+    printMapPng,
+    printPlayersPng,
+    printServerListPng,
+    printUserInServerListPng,
+} from './utils/canvas';
+import {
+    MAPS_OUTPUT_FILE,
+    PLAYERS_OUTPUT_FILE,
+    SERVERS_OUTPUT_FILE,
+    WHEREIS_OUTPUT_FILE,
+} from './types/constants';
+import { getUserMatchedList, queryAllServers } from './utils/utils';
+import { printChartPng, printHoursChartPng } from './charts/chart';
+import { AnalysticsTask } from './tasks/analysticsTask';
+import { AnalysticsHoursTask } from './tasks/analyticsHoursTask';
+import { parseIgnoreSpace } from '../../utils/cmd';
+import { MapsDataService } from './services/mapsData.service';
+import { CanvasImgService } from '../../services/canvasImg.service';
 
 // ============================================================================
 // 简化的命令工厂函数
@@ -71,7 +93,7 @@ async function generateServerReply(
 }
 
 // ============================================================================
-// SERVERS COMMAND - 查询服务器列表
+// SERVERS COMMAND - 查询服务器列表 (使用缓存)
 // ============================================================================
 export const ServersCommandRegister = createServerCommand(
     {
@@ -82,16 +104,70 @@ export const ServersCommandRegister = createServerCommand(
         timesInterval: 5,
     },
     async (ctx) => {
-        const serverList = await queryAllServers(ctx.env.SERVERS_MATCH_REGEX);
-        printServerListPng(serverList, SERVERS_OUTPUT_FILE);
-        const reply = await generateServerReply(
-            ctx,
-            serverList,
-            SERVERS_OUTPUT_FILE,
+        const groupId = ctx.event.group_id;
+        const qqId = ctx.event.user_id;
+        
+        const result = await serverCommandCache.executeWithGroupCD(
+            groupId,
+            'servers',
+            {},
+            qqId,
+            async (): Promise<ApiResult> => {
+                const serverList = await queryAllServers(ctx.env.SERVERS_MATCH_REGEX);
+                printServerListPng(serverList, SERVERS_OUTPUT_FILE);
+                return { serverList, outputFile: SERVERS_OUTPUT_FILE };
+            },
+            { cdMs: 5000 }
         );
-        await ctx.reply(reply);
+
+        // 处理结果
+        if (result.status === 'cooldown') {
+            await ctx.reply('命令冷却中，请稍后再试');
+            return;
+        }
+
+        if (result.status === 'processing' && result.needWait && !result.isFirstRequester) {
+            await ctx.reply('请求处理中，请稍后...');
+            
+            try {
+                const apiResult = await serverCommandCache.waitForResult(result.pendingRequest!, 30000);
+                const reply = await generateServerReply(ctx, apiResult.serverList, apiResult.outputFile);
+                
+                const allWaiters = serverCommandCache.getAllWaiters(result.pendingRequest!.command);
+                const atMessage = serverCommandCache.generateAtMessage(allWaiters, reply);
+                
+                await ctx.reply(atMessage);
+            } catch (error) {
+                logger.error('[ServersCommand] Wait for result failed:', error);
+                await ctx.reply('请求超时或失败，请稍后重试');
+            }
+            return;
+        }
+
+        if (result.status === 'processing' && result.isFirstRequester) {
+            try {
+                const apiResult = await serverCommandCache.waitForResult(result.pendingRequest!, 30000);
+                const reply = await generateServerReply(ctx, apiResult.serverList, apiResult.outputFile);
+                
+                const allWaiters = serverCommandCache.getAllWaiters(result.pendingRequest!.command);
+                if (allWaiters.length > 1) {
+                    const atMessage = serverCommandCache.generateAtMessage(allWaiters, reply);
+                    await ctx.reply(atMessage);
+                } else {
+                    await ctx.reply(reply);
+                }
+            } catch (error) {
+                logger.error('[ServersCommand] Execute failed:', error);
+                await ctx.reply('请求失败，请稍后重试');
+            }
+            return;
+        }
     },
 );
+// ============================================================================
+// WHEREIS COMMAND - 查询玩家位置
+// ============================================================================
+
 
 // ============================================================================
 // WHEREIS COMMAND - 查询玩家位置
