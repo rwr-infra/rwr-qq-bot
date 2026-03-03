@@ -20,7 +20,7 @@ import {
     getFirstCommand,
     parseIgnoreSpace,
 } from '../utils/cmd';
-import { checkTimeIntervalValid } from '../utils/cmdreq';
+import { checkTimeIntervalValid, getStaticHttpPath } from '../utils/cmdreq';
 import { FuckCommandRegister } from './fuck/register';
 import { SetuCommandRegister } from './setu/register';
 import { TouhouCommandRegister } from './touhou/register';
@@ -45,6 +45,8 @@ import {
 } from './log/register';
 import { AiCommandRegister } from './ai/register';
 import { PostgreSQLService } from '../services/postgresql.service';
+import { CanvasImgService } from '../services/canvasImg.service';
+import { HelpCanvas, type HelpCanvasModel } from './help/canvas/helpCanvas';
 
 const allCommands: IRegister[] = [
     FuckCommandRegister,
@@ -77,13 +79,17 @@ export const initCommands = async (env: GlobalEnv) => {
         ? new Set(env.ACTIVE_COMMANDS)
         : null;
 
-    await Promise.all(
-        allCommands
-            .filter((cmd) => !activeCommands || activeCommands.has(cmd.name))
-            .map(async (cmd) => {
-                await cmd.init?.(env);
-            }),
+    const filteredCommands = allCommands.filter(
+        (cmd) => !activeCommands || activeCommands.has(cmd.name),
     );
+
+    await Promise.all(
+        filteredCommands.map(async (cmd) => {
+            await cmd.init?.(env);
+        }),
+    );
+
+    return filteredCommands;
 };
 
 const quickReply = async (event: MessageEvent, text: string) => {
@@ -102,7 +108,6 @@ const quickReply = async (event: MessageEvent, text: string) => {
 };
 
 const handlingRequestSet = new Set<number>();
-const activeCommandSet = new Set<string>();
 
 export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
     const msg = event.message.trim();
@@ -111,7 +116,8 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
         return;
     }
 
-    if (event.group_id && event.group_id !== +env.LISTEN_GROUP) {
+    const listenGroup = Number(env.LISTEN_GROUP);
+    if (event.group_id && event.group_id !== listenGroup) {
         return;
     }
 
@@ -120,15 +126,13 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
 
     const firstCommand = getFirstCommand(msg);
 
-    /**
-     * Generate activeCommandSet
-     */
-    env.ACTIVE_COMMANDS.forEach((c) => {
-        activeCommandSet.add(c);
-    });
+    const isAdminUser = env.ADMIN_QQ_LIST.some((qq) => event.user_id === qq);
 
-    const avaliableCommands = allCommands.filter((c) =>
-        activeCommandSet.has(c.name),
+    const activeCommands = env.ACTIVE_COMMANDS
+        ? new Set(env.ACTIVE_COMMANDS)
+        : null;
+    const avaliableCommands = allCommands.filter(
+        (c) => !activeCommands || activeCommands.has(c.name),
     );
 
     // help:
@@ -136,138 +140,120 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
         const params = parseIgnoreSpace(['#help', '#h'], msg);
         const query = params.keys().next().value;
 
-        let helpText = '';
+        const prefix = env.START_MATCH || '#';
+        const visibleCommands = avaliableCommands.filter(
+            (c) => !c.isAdmin || isAdminUser,
+        );
 
+        const outputFile = `help_${event.group_id ? event.group_id : 'private'}_${event.user_id}.png`;
+
+        let model: HelpCanvasModel;
         if (query) {
-            const hitCommand = avaliableCommands.find(
+            const hitCommand = visibleCommands.find(
                 (c) => c.name === query || c.alias === query,
             );
-
             if (hitCommand) {
-                helpText = `#${hitCommand.name}(${hitCommand.alias}): 帮助列表\n\n`;
-
-                hitCommand.hint?.forEach((h) => {
-                    helpText += `${h}\n\n`;
-                });
+                model = {
+                    mode: 'detail',
+                    prefix,
+                    name: hitCommand.name,
+                    alias: hitCommand.alias,
+                    description: hitCommand.description,
+                    hints: hitCommand.hint ?? [],
+                };
             } else {
-                helpText = '未找到对应命令\n';
+                model = { mode: 'not_found', prefix, query };
             }
         } else {
-            helpText = '帮助列表: \n';
-
-            avaliableCommands
-                .filter(
-                    (c) =>
-                        !c.isAdmin ||
-                        env.ADMIN_QQ_LIST.some((qq) => event.user_id === qq),
-                )
-                .forEach((c) => {
-                    helpText += `#${c.name}${c.alias ? `(${c.alias})` : ''}: ${
-                        c.description
-                    }\n\n`;
-                });
+            model = {
+                mode: 'list',
+                prefix,
+                items: visibleCommands.map((c) => ({
+                    name: c.name,
+                    alias: c.alias,
+                    description: c.description,
+                })),
+            };
         }
 
-        await quickReply(event, helpText);
+        let fallbackText = '';
+        try {
+            if (env.OUTPUT_BG_IMG) {
+                await CanvasImgService.getInstance().addImg(
+                    env.OUTPUT_BG_IMG,
+                    true,
+                );
+            }
+            await new HelpCanvas(model, outputFile).render();
+            const cqOutput = `[CQ:image,file=${getStaticHttpPath(
+                env,
+                outputFile,
+            )},cache=0,c=8]`;
+            await quickReply(event, cqOutput);
+        } catch (err) {
+            logger.error('[help] render failed', err);
+
+            if (query) {
+                const hitCommand = visibleCommands.find(
+                    (c) => c.name === query || c.alias === query,
+                );
+                if (hitCommand) {
+                    fallbackText = `${prefix}${hitCommand.name}${hitCommand.alias ? `(${hitCommand.alias})` : ''}: 帮助列表\n\n`;
+                    hitCommand.hint?.forEach((h) => {
+                        fallbackText += `${h}\n\n`;
+                    });
+                } else {
+                    fallbackText = '未找到对应命令\n';
+                }
+            } else {
+                fallbackText = '帮助列表: \n';
+                visibleCommands.forEach((c) => {
+                    fallbackText += `${prefix}${c.name}${c.alias ? `(${c.alias})` : ''}: ${c.description}\n\n`;
+                });
+            }
+
+            await quickReply(event, fallbackText);
+        }
         return;
     }
 
     const hitCommand = avaliableCommands.find(
         (c) => c.name === firstCommand || c.alias === firstCommand,
     );
-
     if (!hitCommand) {
         return;
     }
 
-    if (
-        hitCommand.isAdmin &&
-        !env.ADMIN_QQ_LIST.some((qq) => event.user_id === qq)
-    ) {
+    if (hitCommand.isAdmin && !isAdminUser) {
         return;
     }
 
-    const isAdminUser = env.ADMIN_QQ_LIST.some((qq) => event.user_id === qq);
-
     if (firstCommand === hitCommand.name || firstCommand === hitCommand.alias) {
-        // handling... skiped re-replay
-        if (handlingRequestSet.has(event.message_id)) {
-            return;
-        }
+        const params = getCommandParams(hitCommand, event);
+        const ctx: MsgExecCtx = {
+            env,
+            event,
+            params,
+            reply: async (msg: string) => {
+                await quickReply(event, msg);
+            },
+        };
 
         try {
-            handlingRequestSet.add(event.message_id);
-
-            const timeIntervalRes = checkTimeIntervalValid(hitCommand, event);
-            if (
-                !isAdminUser &&
-                !hitCommand.isAdmin &&
-                !timeIntervalRes.success
-            ) {
-                // Get full seconds part
-                const diffs = Math.floor(timeIntervalRes.amount! / 1000);
-                // Get remaining milliseconds
-                const diffMs = timeIntervalRes.amount! - diffs * 1000;
-                await quickReply(
-                    event,
-                    `账号被风控或请求命令频繁, 请稍后再试, CD 剩余${diffs}.${diffMs}s`,
-                );
+            const isTimeValid = checkTimeIntervalValid(
+                hitCommand,
+                ctx,
+                handlingRequestSet,
+            );
+            if (!isTimeValid) {
                 return;
             }
-            const start = Date.now();
-            const startDate = new Date();
-            const params = getCommandParams(msg, hitCommand.defaultParams);
 
-            const ctx: MsgExecCtx = {
-                msg,
-                params: hitCommand.parseParams
-                    ? hitCommand.parseParams(msg)
-                    : (params as ParamsType),
-                env,
-                event,
-                reply: async (msg: string) => {
-                    await quickReply(event, msg);
-                },
-            };
-
-            if (hitCommand.exec) {
-                await hitCommand.exec(ctx);
-            } else {
-                logger.warn(`Command ${hitCommand.name} has no exec function`);
-                await quickReply(event, `命令 ${hitCommand.name} 暂未实现`);
-                return;
-            }
-            const end = Date.now();
-            const endDate = new Date();
-            const diff = end - start;
-
-            const paramsList: string[] = [];
-            ctx.params.forEach((v, k) => {
-                paramsList.push(k);
-            });
-
-            const stringParams = paramsList.join(' ');
-
-            if (process.env.PG_HOST) {
-                PostgreSQLService.getInst()
-                    .insertCmdData({
-                        cmd: hitCommand.name,
-                        params: stringParams,
-                        user_id: event.user_id,
-                        group_id: event.group_id,
-                        received_time: startDate,
-                        response_time: endDate,
-                        elapse_time: diff,
-                    })
-                    .catch((err: any) => {
-                        logger.error('insertCmdData error', err);
-                    });
-            }
+            await hitCommand.exec(ctx);
         } catch (e) {
-            await quickReply(event, '命令执行失败, 请检查日志');
             logger.error(e);
         } finally {
-            handlingRequestSet.delete(event.message_id);
+            handlingRequestSet.delete(event.user_id);
         }
     }
 };
