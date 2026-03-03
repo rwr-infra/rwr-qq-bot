@@ -1,19 +1,6 @@
 import { IRegister } from '../../types';
-
-let Package: any = null;
-try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    Package = require('../../info.json');
-} catch {
-    // If info.json not found, use fallback values
-    Package = {
-        version: 'unknown',
-        description: 'rwr-imba-qq-bot',
-        repository: { url: 'unknown' },
-        homepage: 'unknown',
-        bugs: { url: 'unknown' },
-    };
-}
+// @ts-ignore - Rollup json plugin handles this
+import Package from '../../info.json';
 
 export const VersionCommandRegister: IRegister = {
     name: 'version',
