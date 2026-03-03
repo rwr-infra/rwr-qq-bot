@@ -234,8 +234,11 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
     }
 
     if (firstCommand === hitCommand.name || firstCommand === hitCommand.alias) {
-        const params = getCommandParams(msg, hitCommand.defaultParams);
+        const params: ParamsType = hitCommand.parseParams
+            ? hitCommand.parseParams(msg)
+            : getCommandParams(msg, hitCommand.defaultParams);
         const ctx: MsgExecCtx = {
+            msg,
             env,
             event,
             params,
@@ -244,13 +247,14 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
             },
         };
 
+        if (handlingRequestSet.has(event.user_id)) {
+            return;
+        }
+        handlingRequestSet.add(event.user_id);
+
         try {
-            const isTimeValid = checkTimeIntervalValid(
-                hitCommand,
-                ctx,
-                handlingRequestSet,
-            );
-            if (!isTimeValid) {
+            const cdRes = checkTimeIntervalValid(hitCommand, event);
+            if (!cdRes.success) {
                 return;
             }
 
