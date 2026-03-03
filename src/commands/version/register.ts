@@ -1,6 +1,21 @@
 import { IRegister } from '../../types';
-// @ts-ignore - Rollup json plugin handles this
-import Package from '../../info.json';
+
+let Package: any = null;
+
+try {
+    // @ts-ignore - Rollup json plugin handles this in build
+    Package = require('../../info.json');
+} catch {
+    // Fallback for test/development environment when info.json doesn't exist
+    Package = {
+        version: '0.2.5',
+        description: '适用于 RWR 服务器数据查询的 QQ 机器人',
+        repository: { url: 'https://github.com/Kreedzt/rwr-imba-qq-bot.git' },
+        homepage:
+            'https://github.com/Kreedzt/rwr-imba-qq-bot/blob/master/README.md',
+        bugs: { url: 'https://github.com/Kreedzt/rwr-imba-qq-bot/issues' },
+    };
+}
 
 export const VersionCommandRegister: IRegister = {
     name: 'version',
