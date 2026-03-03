@@ -1,12 +1,12 @@
 import { IRegister } from '../../types';
 
-let Package: any = null;
+let Package: any;
 
-try {
-    // @ts-ignore - Rollup json plugin handles this in build
-    Package = require('../../info.json');
-} catch {
-    // Fallback for test/development environment when info.json doesn't exist
+const isVitest =
+    typeof process !== 'undefined' && process.env.VITEST === 'true';
+
+if (isVitest) {
+    // Vitest test environment - use mock data directly
     Package = {
         version: '0.2.5',
         description: '适用于 RWR 服务器数据查询的 QQ 机器人',
@@ -15,6 +15,10 @@ try {
             'https://github.com/Kreedzt/rwr-imba-qq-bot/blob/master/README.md',
         bugs: { url: 'https://github.com/Kreedzt/rwr-imba-qq-bot/issues' },
     };
+} else {
+    // Production build - let Rollup json plugin handle the import
+    // @ts-ignore - Rollup json plugin handles this
+    Package = require('../../info.json');
 }
 
 export const VersionCommandRegister: IRegister = {
