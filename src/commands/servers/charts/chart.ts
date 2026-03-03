@@ -10,10 +10,13 @@ import {
     ANALYSIS_HOURS_DATA_FILE,
     ANALYSIS_HOURS_OUTPUT_FILE,
     ANALYSIS_OUTPUT_FILE,
+    ANALYSIS_SERVER_DATA_FILE,
+    ANALYSIS_SERVER_OUTPUT_FILE,
     OUTPUT_FOLDER,
 } from '../types/constants';
-import { IAnalysisData } from '../types/types';
+import { IAnalysisData, IServerAnalyticsRecord } from '../types/types';
 import { ChartRenderer, ChartConfig } from './ChartRenderer';
+import { ServerChartRenderer } from './ServerChartRenderer';
 
 /**
  * 读取 7 日统计数据
@@ -87,4 +90,39 @@ export const printHoursChartPng = async (): Promise<string> => {
     };
 
     return renderer.render(config);
+};
+
+/**
+ * 读取服务器统计数据
+ */
+const readServerData = (): IServerAnalyticsRecord[] => {
+    const fileContent = fs.readFileSync(
+        path.join(
+            process.cwd(),
+            OUTPUT_FOLDER,
+            `./${ANALYSIS_SERVER_DATA_FILE}`,
+        ),
+        'utf-8',
+    );
+
+    const typedValues = JSON.parse(fileContent) as {
+        records: IServerAnalyticsRecord[];
+    };
+
+    return typedValues.records || [];
+};
+
+/**
+ * 渲染服务器统计图表
+ */
+export const printServerChartPng = async (): Promise<string> => {
+    const renderer = new ServerChartRenderer();
+
+    const records = readServerData();
+
+    return renderer.render({
+        title: '各服务器24小时在线玩家数统计图',
+        records: records,
+        outputFile: ANALYSIS_SERVER_OUTPUT_FILE,
+    });
 };

@@ -13,3 +13,7 @@ export const ANALYSIS_HOURS_DATA_FILE = 'analysis_hours.json';
 export const MAPS_OUTPUT_FILE = 'maps.png';
 
 export const PLAYERS_OUTPUT_FILE = 'players.png';
+
+export const ANALYSIS_SERVER_OUTPUT_FILE = 'analysis_server.png';
+
+export const ANALYSIS_SERVER_DATA_FILE = 'analysis_server.json';

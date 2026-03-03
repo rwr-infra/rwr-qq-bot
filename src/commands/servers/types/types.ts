@@ -49,3 +49,14 @@ export interface IMapDataItem {
     name: string;
     id: string;
 }
+
+export interface IServerAnalyticsHourlyData {
+    date: string;
+    count: number;
+}
+
+export interface IServerAnalyticsRecord {
+    serverKey: string;
+    serverName: string;
+    data: IServerAnalyticsHourlyData[];
+}

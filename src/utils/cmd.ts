@@ -1,12 +1,18 @@
-export const getFirstCommand = (msg: string) => {
+export const getFirstCommand = (msg: unknown) => {
+    if (typeof msg !== 'string') {
+        return '';
+    }
     const fixedMsg = msg.trim().toLowerCase().replace('#', '');
     return fixedMsg.split(' ')[0];
 };
 
 export const getCommandParams = (
-    msg: string,
+    msg: unknown,
     defaultParams?: Record<string, boolean>
 ): Map<string, boolean> => {
+    if (typeof msg !== 'string') {
+        return new Map(Object.entries(defaultParams ?? {}));
+    }
     const fixedMsg = msg.replace('#', '');
 
     const [firstCommand, ...params] = fixedMsg
@@ -24,7 +30,10 @@ export const getCommandParams = (
     return resMap;
 };
 
-export const parseIgnoreSpace = (cmdList: string[], raw: string): Map<string, boolean> => {
+export const parseIgnoreSpace = (cmdList: string[], raw: unknown): Map<string, boolean> => {
+    if (typeof raw !== 'string') {
+        return new Map();
+    }
     let step1Msg = raw;
 
     cmdList.forEach((cmd) => {

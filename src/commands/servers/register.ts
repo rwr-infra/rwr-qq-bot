@@ -14,34 +14,15 @@ import {
     WHEREIS_OUTPUT_FILE,
 } from './types/constants';
 import { getUserMatchedList, queryAllServers } from './utils/utils';
-import { printChartPng, printHoursChartPng } from './charts/chart';
+import { printChartPng, printHoursChartPng, printServerChartPng } from './charts/chart';
 import { AnalysticsTask } from './tasks/analysticsTask';
 import { AnalysticsHoursTask } from './tasks/analyticsHoursTask';
+import { AnalysticsServerTask } from './tasks/analyticsServerTask';
 import { parseIgnoreSpace } from '../../utils/cmd';
 import { MapsDataService } from './services/mapsData.service';
 import { CanvasImgService } from '../../services/canvasImg.service';
 import { serverCommandCache, ApiResult } from '../../services/serverCommandCache.service';
-import { GlobalEnv, MsgExecCtx, IRegister } from '../../types';
-import { getStaticHttpPath } from '../../utils/cmdreq';
-import {
-    printMapPng,
-    printPlayersPng,
-    printServerListPng,
-    printUserInServerListPng,
-} from './utils/canvas';
-import {
-    MAPS_OUTPUT_FILE,
-    PLAYERS_OUTPUT_FILE,
-    SERVERS_OUTPUT_FILE,
-    WHEREIS_OUTPUT_FILE,
-} from './types/constants';
-import { getUserMatchedList, queryAllServers } from './utils/utils';
-import { printChartPng, printHoursChartPng } from './charts/chart';
-import { AnalysticsTask } from './tasks/analysticsTask';
-import { AnalysticsHoursTask } from './tasks/analyticsHoursTask';
-import { parseIgnoreSpace } from '../../utils/cmd';
-import { MapsDataService } from './services/mapsData.service';
-import { CanvasImgService } from '../../services/canvasImg.service';
+
 
 // ============================================================================
 // 简化的命令工厂函数
@@ -332,5 +313,36 @@ export const AnalyticsCommandRegister: IRegister = {
         logger.info('AnalyticsCommandRegister::init()');
         AnalysticsTask.start(env);
         AnalysticsHoursTask.start(env);
+    },
+};
+
+// ============================================================================
+// SERVER ANALYTICS COMMAND - 查询各服务器统计信息
+// ============================================================================
+export const ServerAnalyticsCommandRegister: IRegister = {
+    name: 'serveranalytics',
+    alias: 'sa',
+    description:
+        '查询各服务器统计信息(最近24小时各服务器在线玩家数据).[15s CD]',
+    hint: [
+        '查询各服务器24小时统计信息: #serveranalytics',
+    ],
+    isAdmin: false,
+    timesInterval: 15,
+    exec: async (ctx): Promise<void> => {
+        await ctx.reply('正在生成各服务器统计图, 过程可能需要1分钟, 请稍后...');
+
+        const path = await printServerChartPng();
+
+        const cqOutput = `[CQ:image,file=${getStaticHttpPath(
+            ctx.env,
+            path,
+        )},cache=0,c=8]`;
+
+        await ctx.reply(cqOutput);
+    },
+    init: async (env: GlobalEnv): Promise<void> => {
+        logger.info('ServerAnalyticsCommandRegister::init()');
+        AnalysticsServerTask.start(env);
     },
 };
