@@ -1,5 +1,19 @@
-import {IRegister} from "../../types";
-import * as Package from "../../info.json";
+import { IRegister } from '../../types';
+
+let Package: any = null;
+try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    Package = require('../../info.json');
+} catch {
+    // If info.json not found, use fallback values
+    Package = {
+        version: 'unknown',
+        description: 'rwr-imba-qq-bot',
+        repository: { url: 'unknown' },
+        homepage: 'unknown',
+        bugs: { url: 'unknown' },
+    };
+}
 
 export const VersionCommandRegister: IRegister = {
     name: 'version',
@@ -14,5 +28,5 @@ export const VersionCommandRegister: IRegister = {
         outputStr += `Bug 上报: ${Package.bugs.url}`;
 
         await ctx.reply(outputStr);
-    }
-}
+    },
+};
