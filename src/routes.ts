@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyPluginOptions } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { GlobalEnv } from './types';
 import { PostgreSQLService } from './services/postgresql.service';
 import { eventHandler } from './eventHandler';
@@ -12,12 +12,13 @@ export async function registerRoutes(app: FastifyInstance, env: GlobalEnv) {
         eventHandler(env, bodyData);
     });
 
-    app.get('/ping', async (req, res) => {
-        res.send('pong!');
+
+    app.get('/health', async (_req, res) => {
+        res.send({ status: 'ok' });
     });
 
     if (process.env.PG_DB) {
-        app.get('/query_cmd', async (req, res) => {
+        app.get('/query_cmd', async (_req, res) => {
             const data = await PostgreSQLService.getInst().queryCmd();
 
             const columns = [

@@ -11,6 +11,7 @@ import {
     ServersCommandRegister,
     WhereIsCommandRegister,
     PlayersCommandRegister,
+    ServerAnalyticsCommandRegister,
 } from './servers/register';
 import { RollCommandRegister } from './roll/register';
 import { logger } from '../utils/logger';
@@ -53,6 +54,7 @@ const allCommands: IRegister[] = [
     ServersCommandRegister,
     WhereIsCommandRegister,
     AnalyticsCommandRegister,
+    ServerAnalyticsCommandRegister,
     MapsCommandRegister,
     PlayersCommandRegister,
     RollCommandRegister,
@@ -110,12 +112,15 @@ const quickReply = async (event: MessageEvent, text: string) => {
 const handlingRequestSet = new Set<number>();
 
 export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
-    const msg = event.message.trim();
+    const msgRaw = event.message;
+    if (typeof msgRaw !== 'string') {
+        return;
+    }
+    const msg = msgRaw.trim();
 
     if (!msg.startsWith(env.START_MATCH)) {
         return;
     }
-
     const listenGroup = Number(env.LISTEN_GROUP);
     if (event.group_id && event.group_id !== listenGroup) {
         return;
@@ -229,8 +234,11 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
     }
 
     if (firstCommand === hitCommand.name || firstCommand === hitCommand.alias) {
-        const params = getCommandParams(hitCommand, event);
+        const params: ParamsType = hitCommand.parseParams
+            ? hitCommand.parseParams(msg)
+            : getCommandParams(msg, hitCommand.defaultParams);
         const ctx: MsgExecCtx = {
+            msg,
             env,
             event,
             params,
@@ -239,13 +247,14 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
             },
         };
 
+        if (handlingRequestSet.has(event.user_id)) {
+            return;
+        }
+        handlingRequestSet.add(event.user_id);
+
         try {
-            const isTimeValid = checkTimeIntervalValid(
-                hitCommand,
-                ctx,
-                handlingRequestSet,
-            );
-            if (!isTimeValid) {
+            const cdRes = checkTimeIntervalValid(hitCommand, event);
+            if (!cdRes.success) {
                 return;
             }
 
