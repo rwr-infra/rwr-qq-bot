@@ -81,8 +81,8 @@ export const ServersCommandRegister = createServerCommand(
         name: 'servers',
         alias: 's',
         hint: ['查询所有在线的 rwr 服务器列表: #servers'],
-        description: '查询所有在线的 rwr 服务器列表.[5s CD]',
-        timesInterval: 5,
+        description: '查询所有在线的 rwr 服务器列表.[10s CD]',
+        timesInterval: 10,
     },
     async (ctx) => {
         const groupId = ctx.event.group_id;
@@ -156,10 +156,10 @@ export const ServersCommandRegister = createServerCommand(
 export const WhereIsCommandRegister: IRegister = {
     name: 'whereis',
     alias: 'w',
-    description: '查询玩家所在的 rwr 服务器, 需要一个参数.[5s CD]',
+    description: '查询玩家所在的 rwr 服务器, 需要一个参数.[10s CD]',
     hint: ['查询目标玩家所在服务器: #whereis KREEDZT'],
     isAdmin: false,
-    timesInterval: 5,
+    timesInterval: 10,
     init: async (env: GlobalEnv): Promise<void> => {
         if (env.OUTPUT_BG_IMG) {
             await CanvasImgService.getInstance().addImg(
@@ -217,8 +217,8 @@ export const PlayersCommandRegister = createServerCommand(
         name: 'players',
         alias: 'p',
         hint: ['查询所有在线的 rwr 玩家列表: #players'],
-        description: '查询所有服务器内在线的 rwr 玩家列表.[5s CD]',
-        timesInterval: 5,
+        description: '查询所有服务器内在线的 rwr 玩家列表.[10s CD]',
+        timesInterval: 10,
     },
     async (ctx) => {
         const serverList = await queryAllServers(ctx.env.SERVERS_MATCH_REGEX);
@@ -240,9 +240,9 @@ export const MapsCommandRegister: IRegister = {
         {
             name: 'maps',
             alias: 'm',
-            description: '查询所有 rwr 地图列表.[5s CD]',
+            description: '查询所有 rwr 地图列表.[10s CD]',
             hint: ['按地图顺序查询服务器状态列表: #maps'],
-            timesInterval: 5,
+            timesInterval: 10,
         },
         async (ctx) => {
             const serverList = await queryAllServers(
