@@ -43,15 +43,23 @@ export class ServerChartRenderer {
     }
 
     private buildChartOption(config: ServerChartConfig): any {
-        const allHours = new Set<string>();
-        config.records.forEach((record) => {
-            record.data.forEach((d) => allHours.add(d.date));
-        });
-        const sortedHours = Array.from(allHours).sort((a, b) => {
-            const hourA = parseInt(a);
-            const hourB = parseInt(b);
-            return hourA - hourB;
-        });
+        const baselineRecord =
+            config.records.reduce<IServerAnalyticsRecord | null>((acc, r) => {
+                if (!acc) return r;
+                return r.data.length > acc.data.length ? r : acc;
+            }, null);
+
+        const xAxisDates = baselineRecord
+            ? baselineRecord.data.map((d) => d.date)
+            : [];
+        const lastDate =
+            xAxisDates.length > 0 ? xAxisDates[xAxisDates.length - 1] : null;
+
+        const activeRecords = lastDate
+            ? config.records.filter((r) =>
+                  r.data.some((d) => d.date === lastDate),
+              )
+            : config.records;
 
         const colors = [
             '#5470c6',
@@ -66,21 +74,57 @@ export class ServerChartRenderer {
             '#48b8d0',
         ];
 
-        const series = config.records.map((record, index) => {
+        const series = activeRecords.map((record, index) => {
             const dataMap = new Map(record.data.map((d) => [d.date, d.count]));
-            const data = sortedHours.map((hour) => dataMap.get(hour) ?? 0);
+            const data = xAxisDates.map((date) => dataMap.get(date) ?? null);
+
+            const lastValue = data.length > 0 ? data[data.length - 1] : null;
+            const showEndLabel = lastValue !== null && lastValue !== undefined;
 
             return {
-                name:
-                    record.serverName.length > 20
-                        ? record.serverName.substring(0, 20) + '...'
-                        : record.serverName,
-                fullName: record.serverName,
-                data: data,
+                name: record.serverName,
+                data,
                 type: 'line',
-                smooth: true,
+                smooth: false,
+                showSymbol: false,
                 symbol: 'circle',
                 symbolSize: 6,
+                label: {
+                    show: true,
+                    position: 'top',
+                    fontSize: 10,
+                    color: '#333',
+                    formatter: (params: { value: number | null }) => {
+                        if (
+                            params.value === null ||
+                            params.value === undefined
+                        ) {
+                            return '';
+                        }
+                        return String(params.value);
+                    },
+                },
+                endLabel: {
+                    show: showEndLabel,
+                    align: 'left',
+                    padding: [2, 4],
+                    backgroundColor: 'rgba(255,255,255,0.85)',
+                    borderRadius: 2,
+                    formatter: (params: { seriesName: string }) => {
+                        const name = params.seriesName;
+                        if (name.length > 32) {
+                            return name.substring(0, 29) + '...';
+                        }
+                        return name;
+                    },
+                },
+                labelLayout: {
+                    moveOverlap: 'shiftY',
+                    hideOverlap: true,
+                },
+                emphasis: {
+                    focus: 'series',
+                },
                 itemStyle: {
                     color: colors[index % colors.length],
                 },
@@ -106,55 +150,19 @@ export class ServerChartRenderer {
                 formatter: (params: any) => {
                     let result = params[0].axisValue + '<br/>';
                     params.forEach((param: any) => {
-                        const fullName =
-                            param.series?.fullName || param.seriesName;
-                        result += `${fullName}: ${param.value}<br/>`;
+                        result += `${param.seriesName}: ${param.value}<br/>`;
                     });
                     return result;
                 },
             },
             legend: {
-                data: series.map((s) => s.name),
-                top: 60,
-                left: 'center',
-                orient: 'horizontal',
-                type: 'scroll',
-                width: '90%',
-                padding: [10, 10, 10, 10],
-                itemGap: 15,
-                itemWidth: 20,
-                itemHeight: 14,
-                textStyle: {
-                    fontSize: 11,
-                    overflow: 'truncate',
-                    width: 100,
-                },
-                formatter: (name: string) => {
-                    if (name.length > 15) {
-                        return name.substring(0, 12) + '...';
-                    }
-                    return name;
-                },
-                tooltip: {
-                    show: true,
-                },
-                pageButtonItemGap: 5,
-                pageButtonGap: 30,
-                pageButtonPosition: 'end',
-                pageFormatter: '{current}/{total}',
-                pageIconColor: '#2f4554',
-                pageIconInactiveColor: '#aaa',
-                pageIconSize: 15,
-                pageTextStyle: {
-                    color: '#333',
-                },
-                animationDurationUpdate: 800,
+                show: false,
             },
             grid: {
                 left: '3%',
-                right: '3%',
+                right: 260,
                 bottom: '3%',
-                top: 140,
+                top: 80,
                 containLabel: true,
             },
             xAxis: {
@@ -166,7 +174,7 @@ export class ServerChartRenderer {
                 },
                 type: 'category',
                 boundaryGap: false,
-                data: sortedHours,
+                data: xAxisDates,
             },
             yAxis: {
                 name: '玩家数',
