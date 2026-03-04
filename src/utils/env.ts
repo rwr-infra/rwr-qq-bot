@@ -83,7 +83,7 @@ export function loadEnv(): GlobalEnv {
     } as GlobalEnv;
 
     try {
-        env.START_MATCH = parseStartMatch(_env.START_MATCH);
+        env.START_MATCH = parseStartMatch(_env.START_MATCH ?? '#');
     } catch (e) {
         // ignore
     }
