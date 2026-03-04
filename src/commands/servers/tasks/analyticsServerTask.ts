@@ -74,14 +74,19 @@ export class AnalysticsServerTask {
                     ? record.data[record.data.length - 1]
                     : null;
 
+            const hourlyData: IServerAnalyticsHourlyData = {
+                date: serverData.date,
+                count: serverData.count,
+            };
+
             if (lastData && lastData.date === serverData.date) {
                 if (lastData.count < serverData.count) {
                     lastData.count = serverData.count;
                 }
             } else if (record.data.length === 24) {
-                record.data = [...record.data.slice(1), serverData];
+                record.data = [...record.data.slice(1), hourlyData];
             } else {
-                record.data.push(serverData);
+                record.data.push(hourlyData);
             }
         }
 
