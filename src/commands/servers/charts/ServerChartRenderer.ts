@@ -161,19 +161,22 @@ export class ServerChartRenderer {
             grid: {
                 left: '3%',
                 right: 260,
-                bottom: '3%',
+                bottom: 56,
                 top: 80,
                 containLabel: true,
             },
             xAxis: {
                 name: '时间',
                 nameLocation: 'center',
-                nameGap: 30,
+                nameGap: 42,
                 nameTextStyle: {
                     fontWeight: 700,
                 },
                 type: 'category',
                 boundaryGap: false,
+                axisLabel: {
+                    margin: 12,
+                },
                 data: xAxisDates,
             },
             yAxis: {
