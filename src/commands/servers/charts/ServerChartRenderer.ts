@@ -110,6 +110,7 @@ export class ServerChartRenderer {
                     padding: [2, 4],
                     backgroundColor: 'rgba(255,255,255,0.85)',
                     borderRadius: 2,
+                    color: colors[index % colors.length],
                     formatter: (params: { seriesName: string }) => {
                         const name = params.seriesName;
                         if (name.length > 32) {
