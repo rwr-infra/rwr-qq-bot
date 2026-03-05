@@ -121,15 +121,11 @@ export class ChartRenderer {
      * 保存 PNG 文件
      */
     private async savePng(buffer: Buffer, fileName: string): Promise<void> {
-        const outputPath = path.join(
-            process.cwd(),
-            OUTPUT_FOLDER,
-            `./${fileName}`,
-        );
+        const outputDir = path.join(process.cwd(), OUTPUT_FOLDER);
+        const outputPath = path.join(outputDir, `./${fileName}`);
 
-        // 确保输出目录存在
-        if (!fs.existsSync(OUTPUT_FOLDER)) {
-            fs.mkdirSync(OUTPUT_FOLDER, { recursive: true });
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
         }
 
         await fs.promises.writeFile(outputPath, buffer);

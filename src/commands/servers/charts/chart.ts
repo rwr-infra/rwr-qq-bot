@@ -96,14 +96,17 @@ export const printHoursChartPng = async (): Promise<string> => {
  * 读取服务器统计数据
  */
 const readServerData = (): IServerAnalyticsRecord[] => {
-    const fileContent = fs.readFileSync(
-        path.join(
-            process.cwd(),
-            OUTPUT_FOLDER,
-            `./${ANALYSIS_SERVER_DATA_FILE}`,
-        ),
-        'utf-8',
+    const filePath = path.join(
+        process.cwd(),
+        OUTPUT_FOLDER,
+        `./${ANALYSIS_SERVER_DATA_FILE}`,
     );
+
+    if (!fs.existsSync(filePath)) {
+        return [];
+    }
+
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
 
     const typedValues = JSON.parse(fileContent) as {
         records: IServerAnalyticsRecord[];
@@ -119,6 +122,10 @@ export const printServerChartPng = async (): Promise<string> => {
     const renderer = new ServerChartRenderer();
 
     const records = readServerData();
+
+    if (records.length === 0) {
+        throw new Error('服务器统计数据尚未生成，请稍后再试');
+    }
 
     return renderer.render({
         title: '各服务器24小时在线玩家数统计图',

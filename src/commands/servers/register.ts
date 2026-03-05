@@ -14,15 +14,21 @@ import {
     WHEREIS_OUTPUT_FILE,
 } from './types/constants';
 import { getUserMatchedList, queryAllServers } from './utils/utils';
-import { printChartPng, printHoursChartPng, printServerChartPng } from './charts/chart';
+import {
+    printChartPng,
+    printHoursChartPng,
+    printServerChartPng,
+} from './charts/chart';
 import { AnalysticsTask } from './tasks/analysticsTask';
 import { AnalysticsHoursTask } from './tasks/analyticsHoursTask';
 import { AnalysticsServerTask } from './tasks/analyticsServerTask';
 import { parseIgnoreSpace } from '../../utils/cmd';
 import { MapsDataService } from './services/mapsData.service';
 import { CanvasImgService } from '../../services/canvasImg.service';
-import { serverCommandCache, ApiResult } from '../../services/serverCommandCache.service';
-
+import {
+    serverCommandCache,
+    ApiResult,
+} from '../../services/serverCommandCache.service';
 
 // ============================================================================
 // 简化的命令工厂函数
@@ -87,18 +93,20 @@ export const ServersCommandRegister = createServerCommand(
     async (ctx) => {
         const groupId = ctx.event.group_id;
         const qqId = ctx.event.user_id;
-        
+
         const result = await serverCommandCache.executeWithGroupCD(
             groupId,
             'servers',
             {},
             qqId,
             async (): Promise<ApiResult> => {
-                const serverList = await queryAllServers(ctx.env.SERVERS_MATCH_REGEX);
+                const serverList = await queryAllServers(
+                    ctx.env.SERVERS_MATCH_REGEX,
+                );
                 printServerListPng(serverList, SERVERS_OUTPUT_FILE);
                 return { serverList, outputFile: SERVERS_OUTPUT_FILE };
             },
-            { cdMs: 5000 }
+            { cdMs: 5000 },
         );
 
         // 处理结果
@@ -107,16 +115,32 @@ export const ServersCommandRegister = createServerCommand(
             return;
         }
 
-        if (result.status === 'processing' && result.needWait && !result.isFirstRequester) {
+        if (
+            result.status === 'processing' &&
+            result.needWait &&
+            !result.isFirstRequester
+        ) {
             await ctx.reply('请求处理中，请稍后...');
-            
+
             try {
-                const apiResult = await serverCommandCache.waitForResult(result.pendingRequest!, 30000);
-                const reply = await generateServerReply(ctx, apiResult.serverList, apiResult.outputFile);
-                
-                const allWaiters = serverCommandCache.getAllWaiters(result.pendingRequest!.command);
-                const atMessage = serverCommandCache.generateAtMessage(allWaiters, reply);
-                
+                const apiResult = await serverCommandCache.waitForResult(
+                    result.pendingRequest!,
+                    30000,
+                );
+                const reply = await generateServerReply(
+                    ctx,
+                    apiResult.serverList,
+                    apiResult.outputFile,
+                );
+
+                const allWaiters = serverCommandCache.getAllWaiters(
+                    result.pendingRequest!.command,
+                );
+                const atMessage = serverCommandCache.generateAtMessage(
+                    allWaiters,
+                    reply,
+                );
+
                 await ctx.reply(atMessage);
             } catch (error) {
                 logger.error('[ServersCommand] Wait for result failed:', error);
@@ -127,12 +151,24 @@ export const ServersCommandRegister = createServerCommand(
 
         if (result.status === 'processing' && result.isFirstRequester) {
             try {
-                const apiResult = await serverCommandCache.waitForResult(result.pendingRequest!, 30000);
-                const reply = await generateServerReply(ctx, apiResult.serverList, apiResult.outputFile);
-                
-                const allWaiters = serverCommandCache.getAllWaiters(result.pendingRequest!.command);
+                const apiResult = await serverCommandCache.waitForResult(
+                    result.pendingRequest!,
+                    30000,
+                );
+                const reply = await generateServerReply(
+                    ctx,
+                    apiResult.serverList,
+                    apiResult.outputFile,
+                );
+
+                const allWaiters = serverCommandCache.getAllWaiters(
+                    result.pendingRequest!.command,
+                );
                 if (allWaiters.length > 1) {
-                    const atMessage = serverCommandCache.generateAtMessage(allWaiters, reply);
+                    const atMessage = serverCommandCache.generateAtMessage(
+                        allWaiters,
+                        reply,
+                    );
                     await ctx.reply(atMessage);
                 } else {
                     await ctx.reply(reply);
@@ -148,7 +184,6 @@ export const ServersCommandRegister = createServerCommand(
 // ============================================================================
 // WHEREIS COMMAND - 查询玩家位置
 // ============================================================================
-
 
 // ============================================================================
 // WHEREIS COMMAND - 查询玩家位置
@@ -324,22 +359,27 @@ export const ServerAnalyticsCommandRegister: IRegister = {
     alias: 'sa',
     description:
         '查询各服务器统计信息(最近24小时各服务器在线玩家数据).[15s CD]',
-    hint: [
-        '查询各服务器24小时统计信息: #serveranalytics',
-    ],
+    hint: ['查询各服务器24小时统计信息: #serveranalytics'],
     isAdmin: false,
     timesInterval: 15,
     exec: async (ctx): Promise<void> => {
         await ctx.reply('正在生成各服务器统计图, 过程可能需要1分钟, 请稍后...');
 
-        const path = await printServerChartPng();
+        try {
+            const path = await printServerChartPng();
 
-        const cqOutput = `[CQ:image,file=${getStaticHttpPath(
-            ctx.env,
-            path,
-        )},cache=0,c=8]`;
+            const cqOutput = `[CQ:image,file=${getStaticHttpPath(
+                ctx.env,
+                path,
+            )},cache=0,c=8]`;
 
-        await ctx.reply(cqOutput);
+            await ctx.reply(cqOutput);
+        } catch (err) {
+            logger.error('[serveranalytics] render failed', err);
+            await ctx.reply(
+                '服务器统计数据尚未生成或生成失败，请等待 2-10 分钟后重试（定时任务会持续写入数据）',
+            );
+        }
     },
     init: async (env: GlobalEnv): Promise<void> => {
         logger.info('ServerAnalyticsCommandRegister::init()');
