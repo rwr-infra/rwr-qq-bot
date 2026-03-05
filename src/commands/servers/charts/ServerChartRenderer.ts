@@ -74,9 +74,56 @@ export class ServerChartRenderer {
             '#48b8d0',
         ];
 
-        const series = activeRecords.map((record, index) => {
+        const downsampleFactor = xAxisDates.length > 12 ? 2 : 1;
+        const downsampleCategory = (labels: string[]): string[] => {
+            if (downsampleFactor <= 1) return labels;
+            const out: string[] = [];
+            for (let i = 0; i < labels.length; i += downsampleFactor) {
+                const start = labels[i];
+                const end = labels[i + downsampleFactor - 1];
+                if (!end || end === start) {
+                    out.push(start);
+                } else {
+                    out.push(`${start}-${end}`);
+                }
+            }
+            return out;
+        };
+
+        const downsampleSeriesData = (
+            data: Array<number | null>,
+        ): Array<number | null> => {
+            if (downsampleFactor <= 1) return data;
+            const out: Array<number | null> = [];
+            for (let i = 0; i < data.length; i += downsampleFactor) {
+                let sum = 0;
+                let cnt = 0;
+                for (let j = 0; j < downsampleFactor; j++) {
+                    const v = data[i + j];
+                    if (v !== null && v !== undefined) {
+                        sum += v;
+                        cnt += 1;
+                    }
+                }
+                out.push(cnt > 0 ? Math.round(sum / cnt) : null);
+            }
+            return out;
+        };
+
+        const MAX_SERIES = 10;
+        const showRecords = activeRecords.slice(0, MAX_SERIES);
+        const hiddenCount = Math.max(
+            0,
+            activeRecords.length - showRecords.length,
+        );
+        const showPointLabels = showRecords.length <= 6;
+
+        const xAxisCategories = downsampleCategory(xAxisDates);
+
+        const series = showRecords.map((record, index) => {
             const dataMap = new Map(record.data.map((d) => [d.date, d.count]));
-            const data = xAxisDates.map((date) => dataMap.get(date) ?? null);
+            const rawData = xAxisDates.map((date) => dataMap.get(date) ?? null);
+            const data = downsampleSeriesData(rawData);
 
             const lastValue = data.length > 0 ? data[data.length - 1] : null;
             const showEndLabel = lastValue !== null && lastValue !== undefined;
@@ -85,12 +132,12 @@ export class ServerChartRenderer {
                 name: record.serverName,
                 data,
                 type: 'line',
-                smooth: false,
+                smooth: 0.35,
                 showSymbol: false,
                 symbol: 'circle',
                 symbolSize: 6,
                 label: {
-                    show: true,
+                    show: showPointLabels,
                     position: 'top',
                     fontSize: 10,
                     color: '#333',
@@ -110,6 +157,7 @@ export class ServerChartRenderer {
                     padding: [2, 4],
                     backgroundColor: 'rgba(255,255,255,0.85)',
                     borderRadius: 2,
+                    color: colors[index % colors.length],
                     formatter: (params: { seriesName: string }) => {
                         const name = params.seriesName;
                         if (name.length > 32) {
@@ -129,7 +177,7 @@ export class ServerChartRenderer {
                     color: colors[index % colors.length],
                 },
                 lineStyle: {
-                    width: 2,
+                    width: 3,
                 },
             };
         });
@@ -140,6 +188,10 @@ export class ServerChartRenderer {
                 text: config.title,
                 textAlign: 'center',
                 left: '50%',
+                subtext:
+                    hiddenCount > 0
+                        ? `仅展示在线人数最高的前 ${showRecords.length} 个服务器（其余 ${hiddenCount} 个已隐藏）`
+                        : undefined,
                 textStyle: {
                     fontSize: 16,
                     fontWeight: 'bold',
@@ -176,8 +228,9 @@ export class ServerChartRenderer {
                 boundaryGap: false,
                 axisLabel: {
                     margin: 12,
+                    interval: downsampleFactor > 1 ? 0 : 0,
                 },
-                data: xAxisDates,
+                data: xAxisCategories,
             },
             yAxis: {
                 name: '玩家数',
@@ -202,14 +255,11 @@ export class ServerChartRenderer {
     }
 
     private async savePng(buffer: Buffer, fileName: string): Promise<void> {
-        const outputPath = path.join(
-            process.cwd(),
-            OUTPUT_FOLDER,
-            `./${fileName}`,
-        );
+        const outputDir = path.join(process.cwd(), OUTPUT_FOLDER);
+        const outputPath = path.join(outputDir, `./${fileName}`);
 
-        if (!fs.existsSync(OUTPUT_FOLDER)) {
-            fs.mkdirSync(OUTPUT_FOLDER, { recursive: true });
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
         }
 
         await fs.promises.writeFile(outputPath, buffer);
