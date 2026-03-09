@@ -33,7 +33,11 @@ export class PostgreSQLService {
         this.pool = new Pool(config);
 
         this.pool.on('error', (err) => {
-            logger.error('PostgreSQL pool error', err);
+            logger.error('Unexpected error on PostgreSQL client', err);
+        });
+
+        this.pool.on('connect', () => {
+            logger.info('PostgreSQL pool connected');
         });
 
         logger.info('PostgreSQL connection pool initialized');
