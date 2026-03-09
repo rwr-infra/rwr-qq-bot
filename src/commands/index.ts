@@ -45,7 +45,7 @@ import {
     Log7CommandRegister,
 } from './log/register';
 import { AiCommandRegister } from './ai/register';
-import { PostgreSQLService } from '../services/postgresql.service';
+import { PostgreSQLService, CmdData } from '../services/postgresql.service';
 import { CanvasImgService } from '../services/canvasImg.service';
 import { HelpCanvas, type HelpCanvasModel } from './help/canvas/helpCanvas';
 
@@ -252,6 +252,9 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
         }
         handlingRequestSet.add(event.user_id);
 
+        const receivedTime = new Date();
+        let responseTime: Date | undefined;
+
         try {
             const cdRes = checkTimeIntervalValid(hitCommand, event);
             if (!cdRes.success) {
@@ -259,10 +262,36 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
             }
 
             await hitCommand.exec(ctx);
+            responseTime = new Date();
         } catch (e) {
             logger.error(e);
+            responseTime = new Date();
         } finally {
             handlingRequestSet.delete(event.user_id);
+
+            if (!(env.PG_HOST && env.PG_DB && env.PG_USER)) {
+                return;
+            }
+
+            // 记录命令执行数据（失败不影响主流程）
+            try {
+                const elapseTime = responseTime
+                    ? responseTime.getTime() - receivedTime.getTime()
+                    : 0;
+                const cmdData: CmdData = {
+                    cmd: hitCommand.name,
+                    params: Array.from(params.keys()).join(' '),
+                    user_id: event.user_id,
+                    group_id: event.group_id || 0,
+                    received_time: receivedTime,
+                    response_time: responseTime,
+                    elapse_time: elapseTime,
+                };
+                await PostgreSQLService.getInst().insertCmdData(cmdData);
+            } catch (dbError) {
+                // 数据记录失败不影响主流程，仅记录日志
+                logger.error('[cmd] Failed to insert cmd data', dbError);
+            }
         }
     }
 };
