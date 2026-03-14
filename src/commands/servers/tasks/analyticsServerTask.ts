@@ -67,6 +67,9 @@ export class AnalysticsServerTask {
                     data: [],
                 };
                 existingConfig.records.push(record);
+            } else {
+                // 如果服务器已存在，更新为最新的服务器名称
+                record.serverName = serverData.serverName;
             }
 
             const lastData =
