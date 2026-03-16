@@ -366,7 +366,10 @@ export class TDollSkin2Canvas extends BaseCanvas {
      * @returns The maximum width of the rendered skin sections
      */
     private renderTdollSkins(context: Canvas2DContext): number {
-        if (!this.tdoll || !this.skinList?.length) return 0;
+        if (!this.tdoll || !this.skinList?.length) {
+            this.renderStartY = this.state.startY;
+            return 0;
+        }
 
         let maxWidth = 0;
         const x = CANVAS_STYLE.PADDING * 2;
