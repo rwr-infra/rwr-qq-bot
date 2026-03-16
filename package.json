@@ -38,7 +38,7 @@
     "dependencies": {
         "@fastify/static": "^9.0.0",
         "@resvg/resvg-js": "^2.6.2",
-        "axios": "1.13.4",
+        "axios": "1.13.5",
         "cron": "^4.4.0",
         "dayjs": "^1.11.20",
         "dotenv": "^17.3.1",
