@@ -48,6 +48,7 @@ import { AiCommandRegister } from './ai/register';
 import { PostgreSQLService, CmdData } from '../services/postgresql.service';
 import { CanvasImgService } from '../services/canvasImg.service';
 import { HelpCanvas, type HelpCanvasModel } from './help/canvas/helpCanvas';
+import { CheckCommandRegister } from './check/register';
 
 const allCommands: IRegister[] = [
     FuckCommandRegister,
@@ -74,6 +75,7 @@ const allCommands: IRegister[] = [
     AiCommandRegister,
     TDollCommandRegister,
     TDollSkinCommandRegister,
+    CheckCommandRegister,
 ];
 
 export const initCommands = async (env: GlobalEnv) => {
