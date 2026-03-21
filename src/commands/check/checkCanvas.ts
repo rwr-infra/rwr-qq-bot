@@ -76,7 +76,13 @@ export class CheckCanvas extends BaseCanvas {
     private renderHeight = 0;
     private contentLines = 0;
     private maxRectWidth = 0;
+    private rectWidth = 0;
+    private measureMaxWidth = 0;
     private totalTitle = '';
+    private titleStaticSection = '';
+    private titleServerCountSection = '';
+    private titleReachableStaticSection = '';
+    private titleReachableCountSection = '';
 
     constructor(
         private readonly report: CheckReport,
@@ -93,6 +99,22 @@ export class CheckCanvas extends BaseCanvas {
         return `核心服务: 3 项, 服务器: ${this.report.servers.length} 项, 可达: ${serverOkCount}/${this.report.servers.length}`;
     }
 
+    private buildTitleSections() {
+        const serverOkCount = this.report.servers.filter(
+            (item) => item.status === 'ok',
+        ).length;
+
+        this.titleStaticSection = '网络连通性检查: 核心服务 3 项, 服务器 ';
+        this.titleServerCountSection = `${this.report.servers.length} 项`;
+        this.titleReachableStaticSection = ', 可达 ';
+        this.titleReachableCountSection = `${serverOkCount}/${this.report.servers.length}`;
+        this.totalTitle =
+            this.titleStaticSection +
+            this.titleServerCountSection +
+            this.titleReachableStaticSection +
+            this.titleReachableCountSection;
+    }
+
     private getRows(): CheckLatencyResult[] {
         return [
             this.report.remoteApi,
@@ -102,17 +124,31 @@ export class CheckCanvas extends BaseCanvas {
         ];
     }
 
-    private measure(context: Canvas2DContext) {
+    private measureTitle(context: Canvas2DContext) {
         context.font = TITLE_FONT;
-        this.totalTitle = `网络连通性检查: ${this.getSummarySectionText()}`;
+        this.buildTitleSections();
         const titleWidth = context.measureText(this.totalTitle).width + 30;
+        if (titleWidth > this.measureMaxWidth) {
+            this.measureMaxWidth = titleWidth;
+        }
+    }
 
+    private measureList() {
         const rows = this.getRows();
         this.contentLines = rows.length + 2;
-        this.maxRectWidth = titleWidth;
+        this.renderHeight = 120 + this.contentLines * LINE_HEIGHT;
+    }
 
+    private renderMeasuredList(context: Canvas2DContext) {
         context.font = BODY_FONT;
-        for (const row of rows) {
+        this.maxRectWidth = 0;
+        const summaryRows = [
+            this.report.remoteApi,
+            this.report.imageServer,
+            this.report.database,
+        ];
+
+        const renderRowWidth = (row: CheckLatencyResult) => {
             const leftText = `${row.label}${getDisplayTarget(row)}`;
             const width =
                 22 +
@@ -124,7 +160,34 @@ export class CheckCanvas extends BaseCanvas {
             if (width > this.maxRectWidth) {
                 this.maxRectWidth = width;
             }
+        };
+
+        this.renderSectionHeader(context, '[核心服务]');
+        for (const row of summaryRows) {
+            renderRowWidth(row);
+            this.renderStartY += LINE_HEIGHT;
         }
+
+        this.renderSectionHeader(context, '[服务器列表 Ping]');
+        for (const row of this.report.servers) {
+            renderRowWidth(row);
+            this.renderStartY += LINE_HEIGHT;
+        }
+    }
+
+    private measureRender() {
+        this.measureMaxWidth = 0;
+        this.measureTitle(createCanvas(CANVAS_MIN_WIDTH, 200).getContext('2d'));
+        this.measureList();
+
+        const canvas = createCanvas(
+            Math.max(CANVAS_MIN_WIDTH, this.measureMaxWidth),
+            this.renderHeight,
+        );
+        const context = canvas.getContext('2d');
+
+        this.renderTitle(context);
+        this.renderMeasuredList(context);
 
         context.font = SMALL_FONT;
         this.renderFooter(context);
@@ -132,11 +195,11 @@ export class CheckCanvas extends BaseCanvas {
 
         this.renderWidth = Math.max(
             CANVAS_MIN_WIDTH,
-            titleWidth,
+            this.measureMaxWidth,
             this.maxRectWidth + 60,
             footerWidth,
         );
-        this.renderHeight = 120 + this.contentLines * LINE_HEIGHT;
+        this.rectWidth = this.maxRectWidth + 20;
     }
 
     private renderLayout(context: Canvas2DContext, width: number, height: number) {
@@ -149,15 +212,52 @@ export class CheckCanvas extends BaseCanvas {
         context.textAlign = 'left';
         context.textBaseline = 'top';
         context.fillStyle = '#fff';
-        context.fillText(this.totalTitle, PADDING_X, 10);
 
-        this.renderStartY = 86;
+        context.fillText(this.titleStaticSection, 10, 10);
+        const titleStaticWidth = context.measureText(
+            this.titleStaticSection,
+        ).width;
+
+        context.fillStyle = '#fbbf24';
+        context.fillText(this.titleServerCountSection, 10 + titleStaticWidth, 10);
+
+        const titleServerWidth = context.measureText(
+            this.titleServerCountSection,
+        ).width;
+
+        context.fillStyle = '#fff';
+        context.fillText(
+            this.titleReachableStaticSection,
+            10 + titleStaticWidth + titleServerWidth,
+            10,
+        );
+
+        const titleReachableStaticWidth = context.measureText(
+            this.titleReachableStaticSection,
+        ).width;
+
+        const serverOkCount = this.report.servers.filter(
+            (item) => item.status === 'ok',
+        ).length;
+        const reachableColor =
+            serverOkCount === this.report.servers.length ? '#22c55e' : '#f97316';
+        context.fillStyle = reachableColor;
+        context.fillText(
+            this.titleReachableCountSection,
+            10 +
+                titleStaticWidth +
+                titleServerWidth +
+                titleReachableStaticWidth,
+            10,
+        );
+
+        this.renderStartY = 10 + 40 + 10;
     }
 
     private renderSectionHeader(context: Canvas2DContext, text: string) {
         context.font = BODY_FONT;
         context.fillStyle = '#60a5fa';
-        context.fillText(text, CONTENT_START_X, this.renderStartY);
+        context.fillText(text, CONTENT_START_X, 10 + this.renderStartY);
         this.renderStartY += LINE_HEIGHT;
     }
 
@@ -169,24 +269,25 @@ export class CheckCanvas extends BaseCanvas {
         const statusColor = getStatusColor(row);
         const leftText = `${row.label}${getDisplayTarget(row)}`;
         const rightText = getStatusText(row);
-        const leftMaxWidth = this.renderWidth - 220;
+        const rightAnchorX = OUTER_PADDING + this.rectWidth - 12;
+        const leftMaxWidth = rightAnchorX - (CONTENT_START_X + 22) - 140;
 
         context.fillStyle = statusColor;
-        context.fillRect(CONTENT_START_X, this.renderStartY + 8, 10, 10);
+        context.fillRect(CONTENT_START_X, 10 + this.renderStartY + 8, 10, 10);
 
         context.fillStyle = '#fff';
         context.fillText(
             ellipsis(context, leftText, leftMaxWidth),
             CONTENT_START_X + 22,
-            this.renderStartY,
+            10 + this.renderStartY,
         );
 
         context.textAlign = 'right';
         context.fillStyle = statusColor;
         context.fillText(
             rightText,
-            this.renderWidth - 20,
-            this.renderStartY,
+            rightAnchorX,
+            10 + this.renderStartY,
         );
         context.textAlign = 'left';
 
@@ -197,19 +298,17 @@ export class CheckCanvas extends BaseCanvas {
         context.strokeStyle = '#f48225';
         context.rect(
             OUTER_PADDING,
-            86,
-            this.renderWidth - OUTER_PADDING * 2,
+            this.renderStartY + 10,
+            this.rectWidth,
             this.contentLines * LINE_HEIGHT + 12,
         );
         context.stroke();
+        this.renderStartY += 10;
     }
 
     render(): string {
         this.record();
-
-        const measureCanvas = createCanvas(CANVAS_MIN_WIDTH, 200);
-        const measureContext = measureCanvas.getContext('2d');
-        this.measure(measureContext);
+        this.measureRender();
 
         const canvas = createCanvas(this.renderWidth, this.renderHeight);
         const context = canvas.getContext('2d');
