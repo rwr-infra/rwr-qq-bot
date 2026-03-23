@@ -45,6 +45,8 @@ describe('check time utils', () => {
             }, messageTemplate);
 
             expect(res2.success).toBe(false);
+            expect(res2.remainingMs).toBeGreaterThan(0);
+            expect(res2.remainingMs).toBeLessThanOrEqual(3000);
         });
 
         it('CD 3s, diffent user request', async () => {

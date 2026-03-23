@@ -97,7 +97,9 @@ export const initCommands = async (env: GlobalEnv) => {
 };
 
 const quickReply = async (event: MessageEvent, text: string) => {
-    const message = `[CQ:at,qq=${event.user_id}]\n${text}`;
+    const message = text.includes('[CQ:at,qq=')
+        ? text
+        : `[CQ:at,qq=${event.user_id}]\n${text}`;
     if (event.group_id) {
         await RemoteService.getInst().sendGroupMsg({
             group_id: event.group_id,
@@ -112,6 +114,14 @@ const quickReply = async (event: MessageEvent, text: string) => {
 };
 
 const handlingRequestSet = new Set<number>();
+
+const formatCooldownSeconds = (remainingMs?: number) => {
+    if (!remainingMs || remainingMs <= 0) {
+        return 1;
+    }
+
+    return Math.ceil(remainingMs / 1000);
+};
 
 export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
     const msgRaw = event.message;
@@ -249,7 +259,16 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
             },
         };
 
+        const cdRes = checkTimeIntervalValid(hitCommand, event);
+        if (!cdRes.success) {
+            await ctx.reply(
+                `命令冷却中，请 ${formatCooldownSeconds(cdRes.remainingMs)} 秒后再试`,
+            );
+            return;
+        }
+
         if (handlingRequestSet.has(event.user_id)) {
+            await ctx.reply('上一条命令仍在处理中，请稍后再试');
             return;
         }
         handlingRequestSet.add(event.user_id);
@@ -258,11 +277,6 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
         let responseTime: Date | undefined;
 
         try {
-            const cdRes = checkTimeIntervalValid(hitCommand, event);
-            if (!cdRes.success) {
-                return;
-            }
-
             await hitCommand.exec(ctx);
             responseTime = new Date();
         } catch (e) {

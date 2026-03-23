@@ -79,6 +79,86 @@ async function generateServerReply(
     return cqOutput;
 }
 
+function formatCooldownSeconds(remainingMs?: number): number {
+    if (!remainingMs || remainingMs <= 0) {
+        return 1;
+    }
+
+    return Math.ceil(remainingMs / 1000);
+}
+
+async function executeSharedGroupCommand(
+    ctx: MsgExecCtx,
+    options: {
+        command: string;
+        params: unknown;
+        cdMs: number;
+        apiCall: () => Promise<ApiResult>;
+        buildReply: (result: ApiResult) => Promise<string>;
+        firstRequesterMessage?: string;
+        pendingMessage?: string;
+        failureMessage?: string;
+    },
+): Promise<void> {
+    const result = await serverCommandCache.executeWithGroupCD(
+        ctx.event.group_id,
+        options.command,
+        options.params,
+        ctx.event.user_id,
+        options.apiCall,
+        { cdMs: options.cdMs },
+    );
+
+    if (result.status === 'cooldown') {
+        await ctx.reply(
+            `本群正在共享冷却该命令，请 ${formatCooldownSeconds(result.remainingMs)} 秒后再试`,
+        );
+        return;
+    }
+
+    if (result.status !== 'processing' || !result.pendingRequest) {
+        return;
+    }
+
+    if (result.isFirstRequester && options.firstRequesterMessage) {
+        await ctx.reply(options.firstRequesterMessage);
+    }
+
+    if (
+        result.needWait &&
+        !result.isFirstRequester &&
+        options.pendingMessage
+    ) {
+        await ctx.reply(options.pendingMessage);
+    }
+
+    try {
+        const apiResult = await serverCommandCache.waitForResult(
+            result.pendingRequest,
+            30000,
+        );
+        const reply = await options.buildReply(apiResult);
+        const allWaiters = serverCommandCache.getAllWaiters(
+            result.pendingRequest.command,
+        );
+
+        if (allWaiters.length > 1) {
+            await ctx.reply(
+                serverCommandCache.generateAtMessage(allWaiters, reply),
+            );
+            return;
+        }
+
+        await ctx.reply(reply);
+    } catch (error) {
+        logger.error(
+            `[${options.command}] Shared command execute failed:`,
+            error,
+        );
+        await ctx.reply(options.failureMessage || '请求失败，请稍后重试');
+    }
+}
+
 // ============================================================================
 // SERVERS COMMAND - 查询服务器列表 (使用缓存)
 // ============================================================================
@@ -91,94 +171,26 @@ export const ServersCommandRegister = createServerCommand(
         timesInterval: 10,
     },
     async (ctx) => {
-        const groupId = ctx.event.group_id;
-        const qqId = ctx.event.user_id;
-
-        const result = await serverCommandCache.executeWithGroupCD(
-            groupId,
-            'servers',
-            {},
-            qqId,
-            async (): Promise<ApiResult> => {
+        await executeSharedGroupCommand(ctx, {
+            command: 'servers',
+            params: {},
+            cdMs: 5000,
+            apiCall: async (): Promise<ApiResult> => {
                 const serverList = await queryAllServers(
                     ctx.env.SERVERS_MATCH_REGEX,
                 );
                 printServerListPng(serverList, SERVERS_OUTPUT_FILE);
                 return { serverList, outputFile: SERVERS_OUTPUT_FILE };
             },
-            { cdMs: 5000 },
-        );
-
-        // 处理结果
-        if (result.status === 'cooldown') {
-            await ctx.reply('命令冷却中，请稍后再试');
-            return;
-        }
-
-        if (
-            result.status === 'processing' &&
-            result.needWait &&
-            !result.isFirstRequester
-        ) {
-            await ctx.reply('请求处理中，请稍后...');
-
-            try {
-                const apiResult = await serverCommandCache.waitForResult(
-                    result.pendingRequest!,
-                    30000,
-                );
-                const reply = await generateServerReply(
+            buildReply: async (apiResult) =>
+                generateServerReply(
                     ctx,
                     apiResult.serverList,
                     apiResult.outputFile,
-                );
-
-                const allWaiters = serverCommandCache.getAllWaiters(
-                    result.pendingRequest!.command,
-                );
-                const atMessage = serverCommandCache.generateAtMessage(
-                    allWaiters,
-                    reply,
-                );
-
-                await ctx.reply(atMessage);
-            } catch (error) {
-                logger.error('[ServersCommand] Wait for result failed:', error);
-                await ctx.reply('请求超时或失败，请稍后重试');
-            }
-            return;
-        }
-
-        if (result.status === 'processing' && result.isFirstRequester) {
-            try {
-                const apiResult = await serverCommandCache.waitForResult(
-                    result.pendingRequest!,
-                    30000,
-                );
-                const reply = await generateServerReply(
-                    ctx,
-                    apiResult.serverList,
-                    apiResult.outputFile,
-                );
-
-                const allWaiters = serverCommandCache.getAllWaiters(
-                    result.pendingRequest!.command,
-                );
-                if (allWaiters.length > 1) {
-                    const atMessage = serverCommandCache.generateAtMessage(
-                        allWaiters,
-                        reply,
-                    );
-                    await ctx.reply(atMessage);
-                } else {
-                    await ctx.reply(reply);
-                }
-            } catch (error) {
-                logger.error('[ServersCommand] Execute failed:', error);
-                await ctx.reply('请求失败，请稍后重试');
-            }
-            return;
-        }
+                ),
+            pendingMessage: '请求处理中，请稍后...',
+            failureMessage: '请求失败，请稍后重试',
+        });
     },
 );
 // ============================================================================
@@ -256,14 +268,26 @@ export const PlayersCommandRegister = createServerCommand(
         timesInterval: 10,
     },
     async (ctx) => {
-        const serverList = await queryAllServers(ctx.env.SERVERS_MATCH_REGEX);
-        printPlayersPng(serverList, PLAYERS_OUTPUT_FILE);
-        const reply = await generateServerReply(
-            ctx,
-            serverList,
-            PLAYERS_OUTPUT_FILE,
-        );
-        await ctx.reply(reply);
+        await executeSharedGroupCommand(ctx, {
+            command: 'players',
+            params: {},
+            cdMs: 5000,
+            apiCall: async (): Promise<ApiResult> => {
+                const serverList = await queryAllServers(
+                    ctx.env.SERVERS_MATCH_REGEX,
+                );
+                printPlayersPng(serverList, PLAYERS_OUTPUT_FILE);
+                return { serverList, outputFile: PLAYERS_OUTPUT_FILE };
+            },
+            buildReply: async (apiResult) =>
+                generateServerReply(
+                    ctx,
+                    apiResult.serverList,
+                    apiResult.outputFile,
+                ),
+            pendingMessage: '请求处理中，请稍后...',
+            failureMessage: '请求失败，请稍后重试',
+        });
     },
 );
 
@@ -280,20 +304,30 @@ export const MapsCommandRegister: IRegister = {
             timesInterval: 10,
         },
         async (ctx) => {
-            const serverList = await queryAllServers(
-                ctx.env.SERVERS_MATCH_REGEX,
-            );
-            printMapPng(
-                serverList,
-                MapsDataService.getInst().getData(),
-                MAPS_OUTPUT_FILE,
-            );
-            const reply = await generateServerReply(
-                ctx,
-                serverList,
-                MAPS_OUTPUT_FILE,
-            );
-            await ctx.reply(reply);
+            await executeSharedGroupCommand(ctx, {
+                command: 'maps',
+                params: {},
+                cdMs: 5000,
+                apiCall: async (): Promise<ApiResult> => {
+                    const serverList = await queryAllServers(
+                        ctx.env.SERVERS_MATCH_REGEX,
+                    );
+                    printMapPng(
+                        serverList,
+                        MapsDataService.getInst().getData(),
+                        MAPS_OUTPUT_FILE,
+                    );
+                    return { serverList, outputFile: MAPS_OUTPUT_FILE };
+                },
+                buildReply: async (apiResult) =>
+                    generateServerReply(
+                        ctx,
+                        apiResult.serverList,
+                        apiResult.outputFile,
+                    ),
+                pendingMessage: '请求处理中，请稍后...',
+                failureMessage: '请求失败，请稍后重试',
+            });
         },
     ),
     init: async (env: GlobalEnv): Promise<void> => {
@@ -322,27 +356,34 @@ export const AnalyticsCommandRegister: IRegister = {
         ctx.params.forEach((checked: boolean, inputParam: string) => {
             queryParam = inputParam;
         });
+        await executeSharedGroupCommand(ctx, {
+            command: 'analytics',
+            params: { queryParam },
+            cdMs: 5000,
+            apiCall: async (): Promise<ApiResult> => {
+                let outputFile = '';
+                switch (queryParam) {
+                    case 'h': {
+                        outputFile = await printHoursChartPng();
+                        break;
+                    }
+                    case 'd':
+                    default: {
+                        outputFile = await printChartPng();
+                    }
+                }
 
-        let path = '';
-        switch (queryParam) {
-            case 'h': {
-                path = await printHoursChartPng();
-                break;
-            }
-            case 'd':
-            default: {
-                path = await printChartPng();
-            }
-        }
-
-        await ctx.reply('正在生成统计图, 过程可能需要1分钟, 请稍后...');
-
-        const cqOutput = `[CQ:image,file=${getStaticHttpPath(
-            ctx.env,
-            path,
-        )},cache=0,c=8]`;
-
-        await ctx.reply(cqOutput);
+                return { serverList: [], outputFile };
+            },
+            buildReply: async (apiResult) =>
+                `[CQ:image,file=${getStaticHttpPath(
+                    ctx.env,
+                    apiResult.outputFile,
+                )},cache=0,c=8]`,
+            firstRequesterMessage: '正在生成统计图, 过程可能需要1分钟, 请稍后...',
+            pendingMessage: '统计图正在生成中，请稍后...',
+            failureMessage: '生成统计图失败，请稍后重试',
+        });
     },
     init: async (env: GlobalEnv): Promise<void> => {
         logger.info('AnalyticsCommandRegister::init()');
@@ -363,23 +404,25 @@ export const ServerAnalyticsCommandRegister: IRegister = {
     isAdmin: false,
     timesInterval: 15,
     exec: async (ctx): Promise<void> => {
-        await ctx.reply('正在生成各服务器统计图, 过程可能需要1分钟, 请稍后...');
-
-        try {
-            const path = await printServerChartPng();
-
-            const cqOutput = `[CQ:image,file=${getStaticHttpPath(
-                ctx.env,
-                path,
-            )},cache=0,c=8]`;
-
-            await ctx.reply(cqOutput);
-        } catch (err) {
-            logger.error('[serveranalytics] render failed', err);
-            await ctx.reply(
+        await executeSharedGroupCommand(ctx, {
+            command: 'serveranalytics',
+            params: {},
+            cdMs: 5000,
+            apiCall: async (): Promise<ApiResult> => ({
+                serverList: [],
+                outputFile: await printServerChartPng(),
+            }),
+            buildReply: async (apiResult) =>
+                `[CQ:image,file=${getStaticHttpPath(
+                    ctx.env,
+                    apiResult.outputFile,
+                )},cache=0,c=8]`,
+            firstRequesterMessage:
+                '正在生成各服务器统计图, 过程可能需要1分钟, 请稍后...',
+            pendingMessage: '各服务器统计图正在生成中，请稍后...',
+            failureMessage:
                 '服务器统计数据尚未生成或生成失败，请等待 2-10 分钟后重试（定时任务会持续写入数据）',
-            );
-        }
+        });
     },
     init: async (env: GlobalEnv): Promise<void> => {
         logger.info('ServerAnalyticsCommandRegister::init()');
