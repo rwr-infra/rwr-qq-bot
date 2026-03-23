@@ -97,7 +97,9 @@ export const initCommands = async (env: GlobalEnv) => {
 };
 
 const quickReply = async (event: MessageEvent, text: string) => {
-    const message = `[CQ:at,qq=${event.user_id}]\n${text}`;
+    const message = text.includes('[CQ:at,qq=')
+        ? text
+        : `[CQ:at,qq=${event.user_id}]\n${text}`;
     if (event.group_id) {
         await RemoteService.getInst().sendGroupMsg({
             group_id: event.group_id,

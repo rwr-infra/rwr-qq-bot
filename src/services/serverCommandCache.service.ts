@@ -53,6 +53,8 @@ export interface ExecuteResult {
     error?: string;
     /** 结果（仅当status为completed时） */
     result?: ApiResult;
+    /** 剩余冷却时间(毫秒) */
+    remainingMs?: number;
 }
 
 export class ServerCommandCacheService {
@@ -63,10 +65,10 @@ export class ServerCommandCacheService {
     private groupCDMap = new Map<string, number>();
 
     /** 默认CD时间(毫秒) */
-    private readonly DEFAULT_CD = 5000;
+    private readonly DEFAULT_CD: number = 5000;
 
     /** 请求超时时间(毫秒) */
-    private readonly REQUEST_TIMEOUT = 30000;
+    private readonly REQUEST_TIMEOUT: number = 30000;
 
     constructor(options?: { defaultCD?: number; requestTimeout?: number }) {
         this.DEFAULT_CD = options?.defaultCD ?? 5000;
@@ -112,13 +114,25 @@ export class ServerCommandCacheService {
     /**
      * 检查CD
      */
-    private checkCD(groupId: number, command: string, cdMs?: number): boolean {
+    private checkCD(
+        groupId: number,
+        command: string,
+        cdMs?: number,
+    ): { isValid: boolean; remainingMs: number } {
         const cdKey = this.generateCDKey(groupId, command);
         const lastTime = this.groupCDMap.get(cdKey) || 0;
         const now = Date.now();
         const cooldown = cdMs || this.DEFAULT_CD;
+        const elapsed = now - lastTime;
 
-        return now - lastTime >= cooldown;
+        if (elapsed >= cooldown) {
+            return { isValid: true, remainingMs: 0 };
+        }
+
+        return {
+            isValid: false,
+            remainingMs: cooldown - elapsed,
+        };
     }
 
     /**
@@ -168,12 +182,13 @@ export class ServerCommandCacheService {
 
         // 2. 检查CD
         if (!options?.skipCDCheck) {
-            const isCDValid = this.checkCD(groupId, command, options?.cdMs);
-            if (!isCDValid) {
+            const cdResult = this.checkCD(groupId, command, options?.cdMs);
+            if (!cdResult.isValid) {
                 return {
                     status: 'cooldown',
                     needWait: false,
                     isFirstRequester: false,
+                    remainingMs: cdResult.remainingMs,
                 };
             }
         }
