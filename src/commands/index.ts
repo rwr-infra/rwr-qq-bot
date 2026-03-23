@@ -113,6 +113,14 @@ const quickReply = async (event: MessageEvent, text: string) => {
 
 const handlingRequestSet = new Set<number>();
 
+const formatCooldownSeconds = (remainingMs?: number) => {
+    if (!remainingMs || remainingMs <= 0) {
+        return 1;
+    }
+
+    return Math.ceil(remainingMs / 1000);
+};
+
 export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
     const msgRaw = event.message;
     if (typeof msgRaw !== 'string') {
@@ -249,7 +257,16 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
             },
         };
 
+        const cdRes = checkTimeIntervalValid(hitCommand, event);
+        if (!cdRes.success) {
+            await ctx.reply(
+                `命令冷却中，请 ${formatCooldownSeconds(cdRes.remainingMs)} 秒后再试`,
+            );
+            return;
+        }
+
         if (handlingRequestSet.has(event.user_id)) {
+            await ctx.reply('上一条命令仍在处理中，请稍后再试');
             return;
         }
         handlingRequestSet.add(event.user_id);
@@ -258,11 +275,6 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
         let responseTime: Date | undefined;
 
         try {
-            const cdRes = checkTimeIntervalValid(hitCommand, event);
-            if (!cdRes.success) {
-                return;
-            }
-
             await hitCommand.exec(ctx);
             responseTime = new Date();
         } catch (e) {

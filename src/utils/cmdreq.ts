@@ -15,10 +15,12 @@ export const checkTimeIntervalValid = (
 ): {
     success: boolean;
     amount?: number;
+    remainingMs?: number;
 } => {
     const res: {
         success: boolean;
         amount?: number;
+        remainingMs?: number;
     } = {
         success: true,
     };
@@ -58,8 +60,10 @@ export const checkTimeIntervalValid = (
     const timeDiff = currentTimestamp - requestMapRes[commandName].lastCallTime;
     logger.info('> get timeDiff', timeDiff);
     if (timeDiff < c.timesInterval * 1000) {
+        const remainingMs = c.timesInterval * 1000 - timeDiff;
         res.success = false;
         res.amount = timeDiff;
+        res.remainingMs = remainingMs;
         return res;
     }
 
