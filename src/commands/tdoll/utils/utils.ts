@@ -11,6 +11,7 @@ import {
 } from '../types/constants';
 import { resizeImg } from '../../../utils/imgproxy';
 import { TDollCategoryEnum } from '../types/enums';
+import { replacedQueryMatch } from './stringUtils';
 import { TDoll2Canvas } from '../canvas/tdoll2Canvas';
 import { TDollSkin2Canvas } from '../canvas/tdollSkin2Canvas';
 
@@ -55,14 +56,6 @@ export const getRandomTDollData = (dataList: ITDollDataItem[]): string => {
     return formatTDollData(randomData);
 };
 
-export const replacedQueryMatch = (query: string): string => {
-    return query
-        .toLowerCase()
-        .replaceAll('-', '')
-        .replaceAll('.', '')
-        .replaceAll(' ', '');
-};
-
 /**
  * Get matched tdoll data
  * @param dataList
@@ -70,7 +63,7 @@ export const replacedQueryMatch = (query: string): string => {
  */
 export const getMatchedTDollData = (
     dataList: ITDollDataItem[],
-    query: string
+    query: string,
 ): ITDollDataItem[] => {
     if (query.toLowerCase() === TDOLL_RANDOM_KEY) {
         const randomIndex = Math.floor(Math.random() * dataList.length);
@@ -118,7 +111,7 @@ export const getMatchedTDollData = (
 export const getMatchedTDollDataWithCategory = (
     dataList: ITDollDataItem[],
     query: string,
-    query2: string
+    query2: string,
 ): ITDollDataItem[] => {
     let new_query = query2;
     let category = findCategoryByQuery(query);
@@ -144,7 +137,7 @@ export const getMatchedTDollDataWithCategory = (
  */
 export const getTDollDataRes = (
     dataList: ITDollDataItem[],
-    query: string
+    query: string,
 ): string => {
     if (query.toLowerCase() === TDOLL_RANDOM_KEY) {
         return getRandomTDollData(dataList);
@@ -186,7 +179,7 @@ const findCategoryByQuery = (q: string): TDollCategoryEnum | undefined => {
 export const getTDollDataWithCategoryRes = (
     dataList: ITDollDataItem[],
     query: string,
-    query2: string
+    query2: string,
 ): string => {
     let new_query = query2;
     let category = findCategoryByQuery(query);
@@ -208,7 +201,7 @@ export const getTDollDataWithCategoryRes = (
 export const formatTDollSkinData = (
     query: string,
     dollData: ITDollDataItem[],
-    skin: ITDollSkinDataItem
+    skin: ITDollSkinDataItem,
 ): string => {
     const targetTDoll = dollData.find((d) => d.id === query);
     if (!targetTDoll) {
@@ -231,8 +224,6 @@ export const formatTDollSkinData = (
         }
     });
 
-    
-
     return res;
 };
 
@@ -242,7 +233,7 @@ export const formatTDollSkinData = (
  * @returns tdoll data list
  */
 export const readTdollSkinData = (
-    filePath: string
+    filePath: string,
 ): Record<string, ITDollSkinDataItem> => {
     const jsonData = fs.readFileSync(filePath, 'utf-8');
     return JSON.parse(jsonData) as Record<string, ITDollSkinDataItem>;
@@ -251,7 +242,7 @@ export const readTdollSkinData = (
 export const getTDollSkinReplyText = (
     query: string,
     tdollData: ITDollDataItem[],
-    record: Record<string, ITDollSkinDataItem>
+    record: Record<string, ITDollSkinDataItem>,
 ) => {
     if (!(query in record)) {
         return TDOLL_SKIN_NOT_FOUND_MSG;
@@ -265,7 +256,7 @@ export const getTDollSkinReplyText = (
 export const printTDoll2Png = async (
     query: string,
     tdollData: ITDollDataItem[],
-    fileName: string
+    fileName: string,
 ) => {
     if (!fs.existsSync(TDOLL_OUTPUT_FOLDER)) {
         fs.mkdirSync(TDOLL_OUTPUT_FOLDER);
@@ -274,7 +265,7 @@ export const printTDoll2Png = async (
     const outputPath = await new TDoll2Canvas(
         query,
         tdollData,
-        fileName
+        fileName,
     ).render();
 
     return outputPath;
@@ -284,7 +275,7 @@ export const printTDollSkin2Png = async (
     query: string,
     tdollData: ITDollDataItem[],
     record: Record<string, ITDollSkinDataItem>,
-    fileName: string
+    fileName: string,
 ) => {
     if (!fs.existsSync(TDOLL_OUTPUT_FOLDER)) {
         fs.mkdirSync(TDOLL_OUTPUT_FOLDER);
@@ -294,7 +285,7 @@ export const printTDollSkin2Png = async (
         query,
         tdollData,
         record,
-        fileName
+        fileName,
     ).render();
 
     return outputPath;

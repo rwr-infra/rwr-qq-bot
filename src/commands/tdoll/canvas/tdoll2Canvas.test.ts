@@ -42,9 +42,9 @@ describe('TDoll2Canvas', () => {
 
     it('should initialize correctly', () => {
         expect(tdollCanvas).toBeInstanceOf(TDoll2Canvas);
-        expect(tdollCanvas.query).toBe('test');
-        expect(tdollCanvas.tdolls).toEqual(mockTDolls);
-        expect(tdollCanvas.fileName).toBe('test.png');
+        expect((tdollCanvas as any).query).toBe('test');
+        expect((tdollCanvas as any).tdolls).toEqual(mockTDolls);
+        expect((tdollCanvas as any).fileName).toBe('test.png');
     });
 
     describe('loadAllImg', () => {
@@ -55,18 +55,18 @@ describe('TDoll2Canvas', () => {
 
     describe('measureTitle', () => {
         it('should measure title width correctly', () => {
-            tdollCanvas.measureTitle();
-            expect(tdollCanvas.measureMaxWidth).toBeGreaterThan(0);
-            expect(tdollCanvas.totalTitle).toContain('test');
+            (tdollCanvas as any).measureTitle();
+            expect((tdollCanvas as any).measureMaxWidth).toBeGreaterThan(0);
+            expect((tdollCanvas as any).totalTitle).toContain('test');
         });
     });
 
     describe('measureList', () => {
         it('should measure list dimensions correctly', () => {
-            tdollCanvas.measureList();
-            expect(tdollCanvas.measureMaxWidth).toBeGreaterThan(0);
-            expect(tdollCanvas.renderHeight).toBeGreaterThan(0);
-            expect(tdollCanvas.contentLines).toBe(1);
+            (tdollCanvas as any).measureList();
+            expect((tdollCanvas as any).measureMaxWidth).toBeGreaterThan(0);
+            expect((tdollCanvas as any).renderHeight).toBeGreaterThan(0);
+            expect((tdollCanvas as any).contentLines).toBe(1);
         });
     });
 
