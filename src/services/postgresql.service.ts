@@ -25,9 +25,10 @@ export class PostgreSQLService {
             database: process.env.PG_DB,
             user: process.env.PG_USER,
             password: process.env.PG_PASSWORD,
-            max: 50,
+            max: 10,
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 2000,
+            statement_timeout: 10000,
         };
 
         this.pool = new Pool(config);

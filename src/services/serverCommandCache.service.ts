@@ -230,10 +230,7 @@ export class ServerCommandCacheService {
                 throw error;
             })
             .finally(() => {
-                // 延迟清理
-                setTimeout(() => {
-                    this.pendingRequests.delete(cacheKey);
-                }, 60000);
+                this.pendingRequests.delete(cacheKey);
             });
 
         const newPending: PendingRequest = {

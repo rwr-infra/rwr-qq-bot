@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { execFile } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { promisify } from 'node:util';
@@ -7,6 +7,7 @@ import { queryAllServers } from '../servers/utils/utils';
 import { PostgreSQLService } from '../../services/postgresql.service';
 import type { GlobalEnv } from '../../types';
 import { logger } from '../../utils/logger';
+import { createHttpClient } from '../../utils/httpClient';
 import type { CheckLatencyResult, CheckReport } from './types';
 
 const RWR_SERVER_LIST_URL =
@@ -15,9 +16,13 @@ const RWR_SERVER_LIST_URL =
 const HTTP_TIMEOUT_MS = 5000;
 const PING_TIMEOUT_MS = 3000;
 const execFileAsync = promisify(execFile);
+const checkHttpClient = createHttpClient(
+    { timeout: HTTP_TIMEOUT_MS },
+    { maxRetries: 2 },
+);
 
 const formatError = (error: unknown): string => {
-    if (axios.isAxiosError(error)) {
+    if (isAxiosError(error)) {
         return error.code || error.message;
     }
     if (error instanceof Error) {
@@ -121,7 +126,10 @@ const parsePingLatency = (stdout: string): number | null => {
         }
     }
 
-    if (/time[=<]\s*1\s*ms/i.test(normalized) || /时间[=<]\s*1\s*ms/i.test(normalized)) {
+    if (
+        /time[=<]\s*1\s*ms/i.test(normalized) ||
+        /时间[=<]\s*1\s*ms/i.test(normalized)
+    ) {
         return 1;
     }
 
@@ -137,10 +145,14 @@ const measureIcmpPingLatency = async (
     const target = host;
 
     try {
-        const { stdout } = await execFileAsync('ping', getPingArgs(host, timeoutMs), {
-            timeout: timeoutMs + 1000,
-            windowsHide: true,
-        });
+        const { stdout } = await execFileAsync(
+            'ping',
+            getPingArgs(host, timeoutMs),
+            {
+                timeout: timeoutMs + 1000,
+                windowsHide: true,
+            },
+        );
 
         const parsedLatency = parsePingLatency(stdout);
         return {
@@ -167,8 +179,7 @@ const measureImageServerLatency = async (
         '图片服务器',
         anonymizeTarget(env.IMGPROXY_URL),
         async () => {
-            await axios.get(env.IMGPROXY_URL, {
-                timeout: HTTP_TIMEOUT_MS,
+            await checkHttpClient.get(env.IMGPROXY_URL, {
                 validateStatus: () => true,
             });
         },
@@ -205,10 +216,9 @@ const measureRwrApiLatency = async (): Promise<CheckLatencyResult> => {
         'RWR API',
         anonymizeTarget(RWR_SERVER_LIST_URL),
         async () => {
-            await axios.get(RWR_SERVER_LIST_URL, {
-                timeout: HTTP_TIMEOUT_MS,
+            await checkHttpClient.get(RWR_SERVER_LIST_URL, {
                 responseType: 'text',
-                validateStatus: (status) => status >= 200 && status < 500,
+                validateStatus: (status) => status >= 200 && status < 400,
             });
         },
     );
@@ -243,7 +253,9 @@ const measureServersLatency = async (
     );
 };
 
-export const buildCheckReport = async (env: GlobalEnv): Promise<CheckReport> => {
+export const buildCheckReport = async (
+    env: GlobalEnv,
+): Promise<CheckReport> => {
     const [remoteApi, imageServer, database, servers] = await Promise.all([
         measureRwrApiLatency(),
         measureImageServerLatency(env),

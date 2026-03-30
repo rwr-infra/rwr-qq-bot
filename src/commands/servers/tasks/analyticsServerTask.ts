@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import * as fs from 'node:fs/promises';
 import * as path from 'path';
 import { CronJob } from 'cron';
 import { GlobalEnv } from '../../../types';
@@ -26,14 +26,14 @@ export class AnalysticsServerTask {
         return `${address}:${port}`;
     }
 
-    static write(
+    static async write(
         serverDataList: Array<{
             serverKey: string;
             serverName: string;
             date: string;
             count: number;
         }>,
-    ) {
+    ): Promise<void> {
         const folderTarget = path.join(process.cwd(), OUTPUT_FOLDER);
         const writeTarget = path.join(
             folderTarget,
@@ -46,14 +46,10 @@ export class AnalysticsServerTask {
             records: [],
         };
 
-        if (fs.existsSync(writeTarget)) {
-            const fileContent = fs.readFileSync(writeTarget, 'utf-8');
-            existingConfig = JSON.parse(fileContent) as IServerAnalyticsConfig;
-        }
-
-        if (!fs.existsSync(folderTarget)) {
-            fs.mkdirSync(folderTarget);
-        }
+        try {
+            const fileContent = await fs.readFile(writeTarget, 'utf-8');
+            existingConfig = JSON.parse(fileContent);
+        } catch {}
 
         for (const serverData of serverDataList) {
             let record = existingConfig.records.find(
@@ -68,7 +64,6 @@ export class AnalysticsServerTask {
                 };
                 existingConfig.records.push(record);
             } else {
-                // 如果服务器已存在，更新为最新的服务器名称
                 record.serverName = serverData.serverName;
             }
 
@@ -96,17 +91,18 @@ export class AnalysticsServerTask {
         existingConfig.lastUpdateTime = Date.now();
 
         try {
-            fs.writeFileSync(
+            await fs.mkdir(folderTarget, { recursive: true });
+            await fs.writeFile(
                 writeTarget,
                 JSON.stringify(existingConfig),
                 'utf-8',
             );
-        } catch (e: any) {
+        } catch (e) {
             logger.error('AnalysticsServerTask write error', e);
         }
     }
 
-    static async updateCount(env: GlobalEnv) {
+    static async updateCount(env: GlobalEnv): Promise<void> {
         logger.info('AnalysticsServerTask::updateCount(): start');
         if (AnalysticsServerTask.isUpdating) {
             return;
@@ -132,7 +128,7 @@ export class AnalysticsServerTask {
                 dateStr,
                 `${serverDataList.length} servers`,
             );
-            AnalysticsServerTask.write(serverDataList);
+            await AnalysticsServerTask.write(serverDataList);
         } catch (e) {
             logger.error('AnalysticsServerTask updateCount error', e);
         }
@@ -141,7 +137,7 @@ export class AnalysticsServerTask {
         logger.info('AnalysticsServerTask updateCount:: completed');
     }
 
-    static start(env: GlobalEnv) {
+    static start(env: GlobalEnv): void {
         logger.info('AnalysticsServerTask::start()');
         if (this.isRunning) {
             return;
@@ -150,9 +146,9 @@ export class AnalysticsServerTask {
 
         AnalysticsServerTask.job = new CronJob(
             AnalysticsServerTask.timesInterval,
-            () => {
+            async () => {
                 AnalysticsServerTask.isRunning = true;
-                AnalysticsServerTask.updateCount(env);
+                await AnalysticsServerTask.updateCount(env);
             },
             null,
             true,

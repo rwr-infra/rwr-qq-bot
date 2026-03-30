@@ -1,17 +1,13 @@
-import axios from "axios";
-import { API_URL } from "./constants";
-import { SetuRes } from "./types";
-
-const axiosInst = axios.create({
-    timeout: 10 * 1000,
-});
-
-axiosInst.defaults.headers.post['Content-Type'] = 'application/json';
+import { API_URL } from './constants';
+import { SetuRes } from './types';
+import { imageApiClient } from '../../services/imageApiClient';
 
 export const getImgInfo = async () => {
-    const data = (await axiosInst.post(API_URL, {
-        r18: 0
-    })).data as SetuRes;
+    const data = (
+        await imageApiClient.post(API_URL, {
+            r18: 0,
+        })
+    ).data as SetuRes;
 
     return data;
-}
+};

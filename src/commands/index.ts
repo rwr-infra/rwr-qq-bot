@@ -113,7 +113,8 @@ const quickReply = async (event: MessageEvent, text: string) => {
     }
 };
 
-const handlingRequestSet = new Set<number>();
+const COMMAND_TIMEOUT_MS = 30_000;
+const handlingRequestSet = new Map<number, NodeJS.Timeout>();
 
 const formatCooldownSeconds = (remainingMs?: number) => {
     if (!remainingMs || remainingMs <= 0) {
@@ -271,7 +272,13 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
             await ctx.reply('上一条命令仍在处理中，请稍后再试');
             return;
         }
-        handlingRequestSet.add(event.user_id);
+
+        const timeoutId = setTimeout(() => {
+            handlingRequestSet.delete(event.user_id);
+            logger.warn(`[cmd] Command timeout for user ${event.user_id}`);
+        }, COMMAND_TIMEOUT_MS);
+
+        handlingRequestSet.set(event.user_id, timeoutId);
 
         const receivedTime = new Date();
         let responseTime: Date | undefined;
@@ -283,6 +290,10 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
             logger.error(e);
             responseTime = new Date();
         } finally {
+            const existingTimeout = handlingRequestSet.get(event.user_id);
+            if (existingTimeout) {
+                clearTimeout(existingTimeout);
+            }
             handlingRequestSet.delete(event.user_id);
 
             if (!(env.PG_HOST && env.PG_DB && env.PG_USER)) {
