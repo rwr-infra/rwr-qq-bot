@@ -124,11 +124,7 @@ async function executeSharedGroupCommand(
         await ctx.reply(options.firstRequesterMessage);
     }
 
-    if (
-        result.needWait &&
-        !result.isFirstRequester &&
-        options.pendingMessage
-    ) {
+    if (result.needWait && !result.isFirstRequester && options.pendingMessage) {
         await ctx.reply(options.pendingMessage);
     }
 
@@ -138,9 +134,15 @@ async function executeSharedGroupCommand(
             30000,
         );
         const reply = await options.buildReply(apiResult);
-        const allWaiters = serverCommandCache.getAllWaiters(
-            result.pendingRequest.command,
+        const allWaiters = serverCommandCache.getAndClearWaiters(
+            ctx.event.group_id,
+            options.command,
+            options.params,
         );
+
+        if (allWaiters.length === 0) {
+            return;
+        }
 
         if (allWaiters.length > 1) {
             await ctx.reply(
@@ -380,7 +382,8 @@ export const AnalyticsCommandRegister: IRegister = {
                     ctx.env,
                     apiResult.outputFile,
                 )},cache=0,c=8]`,
-            firstRequesterMessage: '正在生成统计图, 过程可能需要1分钟, 请稍后...',
+            firstRequesterMessage:
+                '正在生成统计图, 过程可能需要1分钟, 请稍后...',
             pendingMessage: '统计图正在生成中，请稍后...',
             failureMessage: '生成统计图失败，请稍后重试',
         });

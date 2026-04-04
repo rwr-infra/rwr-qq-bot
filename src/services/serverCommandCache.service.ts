@@ -238,7 +238,7 @@ export class ServerCommandCacheService {
 
         const newPending: PendingRequest = {
             groupId,
-            command: cacheKey,
+            command: command,
             paramsHash: this.hashParams(params),
             qqList: [qqId],
             promise: requestPromise,
@@ -275,7 +275,12 @@ export class ServerCommandCacheService {
     /**
      * 获取等待者列表并清理
      */
-    getAndClearWaiters(cacheKey: string): number[] {
+    getAndClearWaiters(
+        groupId: number,
+        command: string,
+        params: any,
+    ): number[] {
+        const cacheKey = this.generateCacheKey(groupId, command, params);
         const pending = this.pendingRequests.get(cacheKey);
         if (!pending) return [];
 
@@ -283,15 +288,6 @@ export class ServerCommandCacheService {
         // 清理，保留第一个(发起者)
         pending.qqList = pending.qqList.length > 0 ? [pending.qqList[0]] : [];
         return waiters;
-    }
-
-    /**
-     * 获取所有等待者（不清除）
-     */
-    getAllWaiters(cacheKey: string): number[] {
-        const pending = this.pendingRequests.get(cacheKey);
-        if (!pending) return [];
-        return [...pending.qqList];
     }
 
     /**
