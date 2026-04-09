@@ -1,7 +1,7 @@
 import { Canvas2DContext } from '../../../../services/canvasBackend';
 import { CANVAS_STYLE } from '../../types/constants';
 import { ITDollDataItem } from '../../types/types';
-import { replacedQueryMatch } from '../../utils/utils';
+import { replacedQueryMatch } from '../../utils/stringUtils';
 
 /**
  * TDoll 标题渲染器

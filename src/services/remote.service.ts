@@ -1,8 +1,7 @@
-import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 import { logger } from '../utils/logger';
 import { GlobalEnv } from '../types';
-// import axios, { Axios, AxiosInstance } from 'axios';
+import { createHttpClient } from '../utils/httpClient';
 
 export class RemoteService {
     axiosInst: AxiosInstance;
@@ -10,17 +9,21 @@ export class RemoteService {
 
     constructor(remoteUrl: string, token: string) {
         logger.info('Remote service init with:', remoteUrl);
-        const axiosInst = axios.create({
-            baseURL: remoteUrl,
-            timeout: 10 * 1000,
-            headers: {
-                Authorization: `Bearer ${token}`,
+        this.axiosInst = createHttpClient(
+            {
+                baseURL: remoteUrl,
+                timeout: 10 * 1000,
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
             },
-        });
+            { maxRetries: 2 },
+        );
 
-        axiosInst.defaults.headers.post['Content-Type'] = 'application/json';
+        this.axiosInst.defaults.headers.post['Content-Type'] =
+            'application/json';
 
-        axiosInst.interceptors.request.use((config) => {
+        this.axiosInst.interceptors.request.use((config) => {
             const queryUrl = config.url;
             const queryParams = config.params;
 
@@ -30,13 +33,11 @@ export class RemoteService {
             return config;
         });
 
-        axiosInst.interceptors.response.use((config) => {
+        this.axiosInst.interceptors.response.use((config) => {
             const resData = config.data;
             logger.info('> response:', resData);
             return config;
         });
-
-        this.axiosInst = axiosInst;
     }
 
     static init(env: GlobalEnv) {

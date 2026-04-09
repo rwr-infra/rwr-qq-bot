@@ -83,7 +83,6 @@ async function startServer() {
     // 处理未处理的 Promise 拒绝
     process.on('unhandledRejection', (reason, promise) => {
         logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-        gracefulShutdown(app, 'unhandledRejection');
     });
 
     return app;

@@ -1,10 +1,7 @@
 export class AsyncCacheService<T> {
-    /**
-     * by seconds
-     */
     cacheData?: T;
 
-    cacheTime = 0;
+    cacheTime: number = 5 * 60 * 1000;
     lastUpdatedTime?: number;
 
     async fetchData(): Promise<T> {
@@ -17,17 +14,12 @@ export class AsyncCacheService<T> {
     }
 
     updateCheck(): boolean {
-        let shouldUpdate = true;
-        const now = Date.now();
-
-        if (
-            this.lastUpdatedTime &&
-            now - this.lastUpdatedTime < this.cacheTime
-        ) {
-            shouldUpdate = false;
+        if (!this.lastUpdatedTime) {
+            return true;
         }
 
-        return shouldUpdate;
+        const now = Date.now();
+        return now - this.lastUpdatedTime >= this.cacheTime;
     }
 
     async getData() {

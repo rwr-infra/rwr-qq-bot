@@ -7,7 +7,7 @@
  * 3. 智能失效 - TTL + LRU 双策略
  */
 
-import { logger } from '../../utils/logger';
+import { logger } from '../utils/logger';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import crypto from 'node:crypto';

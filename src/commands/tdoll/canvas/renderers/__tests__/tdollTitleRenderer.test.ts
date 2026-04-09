@@ -50,13 +50,13 @@ describe('TDollTitleRenderer', () => {
         it('should render title without highlighting', () => {
             renderer = new TDollTitleRenderer(100, '');
 
-            const tdoll: ITDollDataItem = {
+            const tdoll = {
                 id: '1',
                 nameIngame: 'Test Doll',
                 avatar: 'http://example.com/avatar.png',
                 type: 'AR',
                 mod: '0',
-            };
+            } as ITDollDataItem;
 
             renderer.render(mockContext as any, tdoll);
 
@@ -68,13 +68,13 @@ describe('TDollTitleRenderer', () => {
         it('should update Y position after rendering', () => {
             renderer = new TDollTitleRenderer(100, '');
 
-            const tdoll: ITDollDataItem = {
+            const tdoll = {
                 id: '1',
                 nameIngame: 'Test Doll',
                 avatar: 'http://example.com/avatar.png',
                 type: 'AR',
                 mod: '0',
-            };
+            } as ITDollDataItem;
 
             renderer.render(mockContext as any, tdoll);
 
@@ -87,13 +87,13 @@ describe('TDollTitleRenderer', () => {
         it('should render with highlighting when query matches', () => {
             renderer = new TDollTitleRenderer(100, 'Test');
 
-            const tdoll: ITDollDataItem = {
+            const tdoll = {
                 id: '1',
                 nameIngame: 'Test Doll',
                 avatar: 'http://example.com/avatar.png',
                 type: 'AR',
                 mod: '0',
-            };
+            } as ITDollDataItem;
 
             renderer.render(mockContext as any, tdoll);
 
@@ -104,13 +104,13 @@ describe('TDollTitleRenderer', () => {
         it('should handle random query without highlighting', () => {
             renderer = new TDollTitleRenderer(100, 'random');
 
-            const tdoll: ITDollDataItem = {
+            const tdoll = {
                 id: '1',
                 nameIngame: 'Test Doll',
                 avatar: 'http://example.com/avatar.png',
                 type: 'AR',
                 mod: '0',
-            };
+            } as ITDollDataItem;
 
             renderer.render(mockContext as any, tdoll);
 

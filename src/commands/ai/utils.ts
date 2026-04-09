@@ -3,9 +3,16 @@ import { JwtHeader } from 'jsonwebtoken';
 import { MsgExecCtx } from '../../types';
 import { AI_MODEL_DISPLAY_NAME, AI_MODEL_NAME } from './constants';
 import { logger } from '../../utils/logger';
-import axios, { AxiosResponse } from 'axios';
+import { AxiosResponse } from 'axios';
 import { IDifyAIResponse } from './types';
+import { createHttpClient } from '../../utils/httpClient';
 import _ from 'lodash';
+
+const AI_TIMEOUT_MS = 30_000;
+const aiAxiosInst = createHttpClient(
+    { timeout: AI_TIMEOUT_MS },
+    { maxRetries: 2 },
+);
 
 const genGLMJWT = (apiKey: string): string => {
     const [key, secret] = apiKey.split('.');
@@ -20,12 +27,12 @@ const genGLMJWT = (apiKey: string): string => {
             header: {
                 sign_type: 'SIGN',
             } as unknown as JwtHeader,
-        }
+        },
     );
 };
 
 const genGLMMessages = (
-    query: string
+    query: string,
 ): Array<{
     role: string;
     content: string;
@@ -48,7 +55,7 @@ export const getAIQAMatchRes = async (query: string, ctx: MsgExecCtx) => {
         query,
         ctx.env.DIFY_AI_URL,
         ctx.env.DIFY_AI_TOKEN,
-        ctx.event.user_id.toString()
+        ctx.event.user_id.toString(),
     );
 
     if (res) {
@@ -62,7 +69,7 @@ export const getQAAIRes = async (
     query: string,
     url: string,
     token: string,
-    user: string
+    user: string,
 ) => {
     const queryParams = {
         inputs: {},
@@ -74,7 +81,7 @@ export const getQAAIRes = async (
     logger.info('queryParams:', queryParams);
 
     try {
-        const res = (await axios.post(url, queryParams, {
+        const res = (await aiAxiosInst.post(url, queryParams, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -85,13 +92,13 @@ export const getQAAIRes = async (
         logger.info(
             `tokens cost:`,
             res.data?.metadata.usage.total_tokens,
-            res.data.metadata.usage.total_price
+            res.data.metadata.usage.total_price,
         );
 
         const docsOutput = _.uniq(
             res.data.metadata.retriever_resources.map(
-                (s) => `《${s.document_name}》`
-            )
+                (s) => `《${s.document_name}》`,
+            ),
         ).join(', ');
 
         return res.data.answer

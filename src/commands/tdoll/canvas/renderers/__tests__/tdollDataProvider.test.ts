@@ -28,7 +28,7 @@ describe('TDollDataProvider', () => {
             const mockImage = { width: 100, height: 100 } as any;
             vi.mocked(canvasBackend.loadImageFrom).mockResolvedValue(mockImage);
 
-            const tdolls: ITDollDataItem[] = [
+            const tdolls = [
                 {
                     id: '1',
                     nameIngame: 'Test Doll 1',
@@ -42,7 +42,7 @@ describe('TDollDataProvider', () => {
                     avatarMod: 'http://example.com/2_mod.png',
                     mod: '1',
                 },
-            ];
+            ] as ITDollDataItem[];
 
             await provider.loadAllImages(tdolls);
 
@@ -53,16 +53,18 @@ describe('TDollDataProvider', () => {
         });
 
         it('should handle image load errors gracefully', async () => {
-            vi.mocked(canvasBackend.loadImageFrom).mockRejectedValue(new Error('Network error'));
+            vi.mocked(canvasBackend.loadImageFrom).mockRejectedValue(
+                new Error('Network error'),
+            );
 
-            const tdolls: ITDollDataItem[] = [
+            const tdolls = [
                 {
                     id: '1',
                     nameIngame: 'Test Doll',
                     avatar: 'http://example.com/1.png',
                     mod: '0',
                 },
-            ];
+            ] as ITDollDataItem[];
 
             // Should not throw, errors are logged and swallowed
             await expect(provider.loadAllImages(tdolls)).resolves.not.toThrow();
@@ -72,14 +74,14 @@ describe('TDollDataProvider', () => {
             const mockImage = { width: 100, height: 100 } as any;
             vi.mocked(canvasBackend.loadImageFrom).mockResolvedValue(mockImage);
 
-            const tdolls: ITDollDataItem[] = [
+            const tdolls = [
                 {
                     id: '1',
                     nameIngame: 'Test Doll',
                     avatar: 'http://example.com/1.png',
                     mod: '0',
                 },
-            ];
+            ] as ITDollDataItem[];
 
             // First load
             await provider.loadAllImages(tdolls);

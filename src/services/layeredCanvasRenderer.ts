@@ -11,8 +11,9 @@ import {
     createCanvas,
     Canvas2DContext,
     CanvasLike,
-} from '../../../services/canvasBackend';
-import { logger } from '../../../utils/logger';
+    toPngBuffer,
+} from '../services/canvasBackend';
+import { logger } from '../utils/logger';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -212,7 +213,7 @@ export abstract class LayeredCanvasRenderer {
      * 保存画布到文件
      */
     private saveCanvas(canvas: CanvasLike, filePath: string): void {
-        const buffer = canvas.toBuffer('image/png');
+        const buffer = toPngBuffer(canvas);
         fs.writeFileSync(filePath, buffer);
     }
 

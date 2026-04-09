@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { GlobalEnv } from './types';
 import { PostgreSQLService } from './services/postgresql.service';
 import { eventHandler } from './eventHandler';
+import { logger } from './utils/logger';
 
 export async function registerRoutes(app: FastifyInstance, env: GlobalEnv) {
     app.post('/in', async (req, res) => {
@@ -9,9 +10,10 @@ export async function registerRoutes(app: FastifyInstance, env: GlobalEnv) {
         res.send({
             status: 'ok',
         });
-        eventHandler(env, bodyData);
+        eventHandler(env, bodyData).catch((error) => {
+            logger.error('[eventHandler] Unhandled error:', error);
+        });
     });
-
 
     app.get('/health', async (_req, res) => {
         res.send({ status: 'ok' });

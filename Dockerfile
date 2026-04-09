@@ -70,4 +70,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 EXPOSE ${PORT}
 
 # 设置默认命令
-CMD ["node", "dist/app.js"]
+CMD ["node", "dist/index.js"]

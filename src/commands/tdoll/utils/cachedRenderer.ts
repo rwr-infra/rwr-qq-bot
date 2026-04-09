@@ -11,13 +11,14 @@ import {
     createCanvas,
     Canvas2DContext,
     CanvasLike,
+    toPngBuffer,
 } from '../../../services/canvasBackend';
 import { logger } from '../../../utils/logger';
 import {
     TDollCacheParams,
     getTDollRenderCache,
 } from '../../../services/tdollRenderCache.service';
-import { OUTPUT_FOLDER } from '../types/constants';
+import { TDOLL_OUTPUT_FOLDER } from '../types/constants';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -82,7 +83,7 @@ export abstract class CachedTDollRenderer {
      */
     async render(): Promise<LayeredRenderResult> {
         const cache = getTDollRenderCache();
-        const outputDir = path.join(process.cwd(), OUTPUT_FOLDER);
+        const outputDir = path.join(process.cwd(), TDOLL_OUTPUT_FOLDER);
         const outputPath = path.join(outputDir, this.fileName);
 
         // 确保输出目录存在
@@ -161,12 +162,7 @@ export abstract class CachedTDollRenderer {
 
         // 4. 更新缓存
         if (cache) {
-            cache.set(
-                this.cacheParams,
-                contentPath,
-                outputPath,
-                this.dimensions,
-            );
+            cache.set(this.cacheParams, contentPath, outputPath);
         }
 
         return {
@@ -214,7 +210,7 @@ export abstract class CachedTDollRenderer {
      * 保存画布到文件
      */
     private saveCanvas(canvas: CanvasLike, filePath: string): void {
-        const buffer = canvas.toBuffer('image/png');
+        const buffer = toPngBuffer(canvas);
         fs.writeFileSync(filePath, buffer);
     }
 }
