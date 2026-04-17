@@ -3,6 +3,7 @@ import * as path from 'path';
 import { CronJob } from 'cron';
 import { GlobalEnv } from '../../../types';
 import { queryAllServers } from '../utils/utils';
+import { serverHistoryCache } from '../../../services/serverHistoryCache.service';
 import { logger } from '../../../utils/logger';
 import {
     IServerAnalyticsRecord,
@@ -114,6 +115,7 @@ export class AnalysticsServerTask {
         AnalysticsServerTask.isUpdating = true;
         try {
             const serverList = await queryAllServers(env.SERVERS_MATCH_REGEX);
+            serverHistoryCache.updateSnapshot(serverList);
             const date = new Date();
             const dateStr = `${date.getHours()}时`;
 

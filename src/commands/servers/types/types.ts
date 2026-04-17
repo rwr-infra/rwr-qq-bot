@@ -55,6 +55,10 @@ export interface IServerAnalyticsHourlyData {
     count: number;
 }
 
+export interface HistoricalServerItem extends OnlineServerItem {
+    lastSeenAt: number;
+}
+
 export interface IServerAnalyticsRecord {
     serverKey: string;
     serverName: string;

@@ -1,5 +1,5 @@
 import { createCanvas, Canvas2DContext } from '../../../services/canvasBackend';
-import { OnlineServerItem } from '../types/types';
+import { HistoricalServerItem, OnlineServerItem } from '../types/types';
 import {
     getServersHeaderDisplaySectionText,
     calcCanvasTextWidth,
@@ -8,8 +8,12 @@ import {
 } from '../utils/utils';
 import { BaseCanvas } from '../../../services/baseCanvas';
 
+const HISTORY_LINE_HEIGHT = 30;
+const HISTORY_SECTION_TITLE = '近5分钟离线服务器';
+
 export class ServersCanvas extends BaseCanvas {
     serverList: OnlineServerItem[];
+    historicalServers: HistoricalServerItem[];
     fileName: string;
 
     measureMaxWidth = 0;
@@ -30,9 +34,14 @@ export class ServersCanvas extends BaseCanvas {
 
     totalFooter = '';
 
-    constructor(serverList: OnlineServerItem[], fileName: string) {
+    constructor(
+        serverList: OnlineServerItem[],
+        historicalServers: HistoricalServerItem[],
+        fileName: string,
+    ) {
         super();
         this.serverList = serverList;
+        this.historicalServers = historicalServers;
         this.fileName = fileName;
     }
 
@@ -63,7 +72,24 @@ export class ServersCanvas extends BaseCanvas {
             }
         });
 
-        this.renderHeight = 120 + this.serverList.length * 40;
+        let historicalHeight = 0;
+        if (this.historicalServers.length > 0) {
+            historicalHeight =
+                40 + HISTORY_LINE_HEIGHT * this.historicalServers.length + 10;
+            this.historicalServers.forEach((s) => {
+                const sectionData = getServerInfoDisplaySectionText(s);
+                const outputText =
+                    sectionData.serverSection +
+                    sectionData.playersSection +
+                    sectionData.mapSection;
+                if (outputText.length > this.maxLengthStr.length) {
+                    this.maxLengthStr = outputText;
+                }
+            });
+        }
+
+        this.renderHeight =
+            120 + this.serverList.length * 40 + historicalHeight;
     }
 
     renderLayout(context: Canvas2DContext, width: number, height: number) {
@@ -157,6 +183,70 @@ export class ServersCanvas extends BaseCanvas {
         });
     }
 
+    renderHistoricalList(context: Canvas2DContext) {
+        if (this.historicalServers.length === 0) {
+            return;
+        }
+
+        this.renderStartY += 15;
+
+        context.font = 'bold 14pt Consolas';
+        context.textAlign = 'left';
+        context.textBaseline = 'top';
+        context.fillStyle = '#9ca3af';
+        context.fillText(HISTORY_SECTION_TITLE, 20, 10 + this.renderStartY);
+
+        this.renderStartY += 40;
+
+        context.font = '16pt Consolas';
+
+        this.historicalServers.forEach((s) => {
+            const sectionData = getServerInfoDisplaySectionText(s);
+
+            context.fillStyle = '#6b7280';
+            context.fillText(
+                sectionData.serverSection,
+                20,
+                10 + this.renderStartY,
+            );
+            const serverSectionWidth = context.measureText(
+                sectionData.serverSection,
+            ).width;
+
+            context.fillStyle = '#9ca3af';
+            context.fillText(
+                sectionData.playersSection,
+                20 + serverSectionWidth,
+                10 + this.renderStartY,
+            );
+            const playersSectionWidth = context.measureText(
+                sectionData.playersSection,
+            ).width;
+
+            context.fillStyle = '#6b7280';
+            context.fillText(
+                sectionData.mapSection,
+                20 + serverSectionWidth + playersSectionWidth,
+                10 + this.renderStartY,
+            );
+            const mapSectionWidth = context.measureText(
+                sectionData.mapSection,
+            ).width;
+
+            const elapsedMin = Math.ceil((Date.now() - s.lastSeenAt) / 60000);
+            context.fillStyle = '#9ca3af';
+            context.font = '12pt Consolas';
+            context.fillText(
+                `${elapsedMin}分钟前`,
+                20 + serverSectionWidth + playersSectionWidth + mapSectionWidth,
+                10 + this.renderStartY,
+            );
+
+            context.font = '16pt Consolas';
+            this.renderStartY += HISTORY_LINE_HEIGHT;
+        });
+    }
+
     renderRect(context: Canvas2DContext) {
         context.strokeStyle = '#f48225';
         context.rect(
@@ -180,6 +270,7 @@ export class ServersCanvas extends BaseCanvas {
         const titleWidth = context.measureText(this.totalTitle).width + 30;
         this.renderList(context);
         const listWidth = this.maxRectWidth + 40;
+        this.renderHistoricalList(context);
         this.renderFooter(context);
         const footerWidth = context.measureText(this.totalFooter).width + 30;
 
@@ -198,6 +289,7 @@ export class ServersCanvas extends BaseCanvas {
         this.renderTitle(context);
         this.renderRect(context);
         this.renderList(context);
+        this.renderHistoricalList(context);
         this.renderFooter(context);
 
         return super.writeFile(canvas, this.fileName);
