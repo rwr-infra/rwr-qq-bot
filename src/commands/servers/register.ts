@@ -29,6 +29,7 @@ import {
     serverCommandCache,
     ApiResult,
 } from '../../services/serverCommandCache.service';
+import { serverHistoryCache } from '../../services/serverHistoryCache.service';
 
 // ============================================================================
 // 简化的命令工厂函数
@@ -181,7 +182,13 @@ export const ServersCommandRegister = createServerCommand(
                 const serverList = await queryAllServers(
                     ctx.env.SERVERS_MATCH_REGEX,
                 );
-                printServerListPng(serverList, SERVERS_OUTPUT_FILE);
+                const historicalServers =
+                    serverHistoryCache.getDisappearedServers(serverList);
+                printServerListPng(
+                    serverList,
+                    historicalServers,
+                    SERVERS_OUTPUT_FILE,
+                );
                 return { serverList, outputFile: SERVERS_OUTPUT_FILE };
             },
             buildReply: async (apiResult) =>

@@ -79,7 +79,7 @@ afterEach(() => {
 describe('servers canvas print utilities', () => {
     it('prints server list png', () => {
         const fileName = 'servers-test.png';
-        const outputPath = printServerListPng(servers, fileName);
+        const outputPath = printServerListPng(servers, [], fileName);
         expect(outputPath.endsWith(path.join('out', fileName))).toBe(true);
         expect(fs.existsSync(outputPath)).toBe(true);
     });

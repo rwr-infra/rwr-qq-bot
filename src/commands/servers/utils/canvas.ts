@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import {
+    HistoricalServerItem,
     IMapDataItem,
     IUserMatchedServerItem,
     OnlineServerItem,
@@ -18,13 +19,18 @@ const OUTPUT_FOLDER = 'out';
  */
 export const printServerListPng = (
     serverList: OnlineServerItem[],
-    fileName: string
+    historicalServers: HistoricalServerItem[],
+    fileName: string,
 ) => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
-    const outputPath = new ServersCanvas(serverList, fileName).render();
+    const outputPath = new ServersCanvas(
+        serverList,
+        historicalServers,
+        fileName,
+    ).render();
 
     return outputPath;
 };
@@ -36,7 +42,7 @@ export const printServerListPng = (
  */
 export const printPlayersPng = (
     serverList: OnlineServerItem[],
-    fileName: string
+    fileName: string,
 ): string => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
@@ -58,7 +64,7 @@ export const printUserInServerListPng = (
     matchList: IUserMatchedServerItem[],
     query: string,
     count: number,
-    fileName: string
+    fileName: string,
 ): string => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
@@ -68,7 +74,7 @@ export const printUserInServerListPng = (
         matchList,
         query,
         count,
-        fileName
+        fileName,
     ).render();
 
     return outputPath;
@@ -77,17 +83,13 @@ export const printUserInServerListPng = (
 export const printMapPng = (
     serverList: OnlineServerItem[],
     mapData: IMapDataItem[],
-    fileName: string
+    fileName: string,
 ): string => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
-    const outputPath = new MapsCanvas(
-        serverList,
-        mapData,
-        fileName
-    ).render();
+    const outputPath = new MapsCanvas(serverList, mapData, fileName).render();
 
     return outputPath;
 };
