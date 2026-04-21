@@ -67,7 +67,7 @@ const queryServersRaw = async (params: {
  * @returns parsed server list
  */
 export const parseServerListFromString = (
-    resString: string
+    resString: string,
 ): OnlineServerItem[] => {
     const parser = new XMLParser();
     const res = parser.parse(resString) as Res;
@@ -89,7 +89,7 @@ export const getJoinServerUrl = (server: OnlineServerItem): string => {
 };
 
 export const getServersHeaderDisplaySectionText = (
-    serverList: OnlineServerItem[]
+    serverList: OnlineServerItem[],
 ): {
     serversTotalSection: string;
     playersTotalStaticSection: string;
@@ -98,7 +98,7 @@ export const getServersHeaderDisplaySectionText = (
     const serversTotalSection = `在线服务器数: ${serverList.length}, `;
     const playersTotalStaticSection = `在线玩家数: `;
     const playersCountSection = `${countTotalPlayers(
-        serverList
+        serverList,
     )} / ${countServersMaxPlayers(serverList)}`;
 
     return {
@@ -113,7 +113,7 @@ export const getServersHeaderDisplaySectionText = (
  * @param server
  */
 export const getServerInfoDisplaySectionText = (
-    server: OnlineServerItem
+    server: OnlineServerItem,
 ): {
     serverSection: string;
     playersSection: string;
@@ -179,7 +179,7 @@ export const countTotalPlayers = (servers: OnlineServerItem[]): number => {
  */
 export const isServerMatchRegex = (
     regexStr: string,
-    server: OnlineServerItem
+    server: OnlineServerItem,
 ): boolean => {
     if (!regexStr) {
         return true;
@@ -195,7 +195,7 @@ export const isServerMatchRegex = (
  * @returns all server list
  */
 export const queryAllServers = async (
-    matchRegex: string
+    matchRegex: string,
 ): Promise<OnlineServerItem[]> => {
     let start = 0;
     const size = 100;
@@ -245,7 +245,7 @@ export const getQueryFilterServerList = (
     servers: OnlineServerItem[],
     params: {
         country: Nullable<string>;
-    }
+    },
 ): OnlineServerItem[] => {
     const { country } = params;
 
@@ -277,7 +277,7 @@ export const getMapShortName = (mapId: string): string => {
  */
 const getUserInfoInServerDisplayText = (
     user: string,
-    server: OnlineServerItem
+    server: OnlineServerItem,
 ): string => {
     const mapName = getMapShortName(server.map_id);
 
@@ -293,7 +293,7 @@ const getUserInfoInServerDisplayText = (
  * @param data
  */
 export const getUserMatchedServerDisplaySectionText = (
-    data: IUserMatchedServerItem
+    data: IUserMatchedServerItem,
 ) => {
     const userSection = data.user;
     const staticSection = ` 正在游玩 ${data.server.name}: `;
@@ -316,7 +316,7 @@ export const getUserMatchedServerDisplaySectionText = (
  */
 export const getUserMatchedList = (
     user: string,
-    serverList: OnlineServerItem[]
+    serverList: OnlineServerItem[],
 ): {
     results: IUserMatchedServerItem[];
     total: number;
@@ -370,7 +370,7 @@ export const calcCanvasTextWidth = (text: string, base: number): number => {
  * @param user query user
  */
 export const getWhereisHeaderSectionText = (
-    user: string
+    user: string,
 ): {
     staticSection: string;
     userSection: string;
@@ -396,7 +396,7 @@ export const getWhereisFooterSectionText = (count: number) => {
 };
 
 export const readMapData = async (
-    mapDataFile: string
+    mapDataFile: string,
 ): Promise<IMapDataItem[]> => {
     try {
         const data = await fs.readFile(mapDataFile, 'utf8');
@@ -423,7 +423,9 @@ export const getPlayersInServer = (server: OnlineServerItem): string[] => {
     if (typeof server.player === 'string') {
         playersArr.push(server.player);
     } else if (Array.isArray(server.player)) {
-        playersArr = server.player;
+        playersArr = server.player.filter(
+            (p): p is string => typeof p === 'string',
+        );
     }
 
     return playersArr;
