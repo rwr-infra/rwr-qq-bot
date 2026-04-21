@@ -4,7 +4,6 @@ import { logger } from '../utils/logger';
 import { getStaticHttpPath } from '../utils/cmdreq';
 import { CanvasImgService } from '../services/canvasImg.service';
 import { HelpCanvas } from '../commands/help/canvas/helpCanvas';
-import { initCommands } from '../commands';
 
 let template = '';
 let commandList: Array<{
@@ -45,6 +44,7 @@ export const welcomeNewMember = async (ctx: NoticeExecCtx) => {
         const outputFile = `welcome_${ctx.event.group_id}_${ctx.event.user_id}.png`;
         try {
             if (!commandList) {
+                const { initCommands } = await import('../commands');
                 const commands = await initCommands(ctx.env);
                 commandList = commands
                     .filter((c) => !c.isAdmin)

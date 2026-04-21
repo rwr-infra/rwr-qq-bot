@@ -76,6 +76,8 @@
 
 -   SERVERS_MATCH_REGEX: 用于匹配服务器的正则表达式，用于 `players` 命令的过滤
 -   OUTPUT_BG_IMG: 将输出的图片添加背景图 layer 层, 位于底色上方
+-   MODERATORS: 服务器管理员玩家名列表, 类型为 `JSON string[]`, eg: `["KREEDZT"]`。匹配时忽略大小写, 匹配成功的玩家名后会追加标识
+-   MODERATOR_BADGE: 管理员标识字符, 默认值为 `★` (Unicode 基础星形, 兼容 Linux 无 emoji 字体环境)。如在 macOS 或已安装 `fonts-noto-color-emoji` 的 Debian 服务器上, 可设为 `⭐` 获得彩色效果
 
 ### 注册的指令
 

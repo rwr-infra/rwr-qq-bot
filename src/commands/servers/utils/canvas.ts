@@ -39,16 +39,25 @@ export const printServerListPng = (
  * Print players output png
  * @param serverList server list
  * @param fileName output file name
+ * @param moderators moderator player names
+ * @param moderatorBadge badge string for moderators
  */
 export const printPlayersPng = (
     serverList: OnlineServerItem[],
     fileName: string,
+    moderators?: string[],
+    moderatorBadge?: string,
 ): string => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
-    const outputPath = new PlayersCanvas(serverList, fileName).render();
+    const outputPath = new PlayersCanvas(
+        serverList,
+        fileName,
+        moderators,
+        moderatorBadge,
+    ).render();
 
     return outputPath;
 };

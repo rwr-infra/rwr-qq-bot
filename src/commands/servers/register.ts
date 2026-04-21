@@ -285,7 +285,12 @@ export const PlayersCommandRegister = createServerCommand(
                 const serverList = await queryAllServers(
                     ctx.env.SERVERS_MATCH_REGEX,
                 );
-                printPlayersPng(serverList, PLAYERS_OUTPUT_FILE);
+                printPlayersPng(
+                    serverList,
+                    PLAYERS_OUTPUT_FILE,
+                    ctx.env.MODERATORS,
+                    ctx.env.MODERATOR_BADGE,
+                );
                 return { serverList, outputFile: PLAYERS_OUTPUT_FILE };
             },
             buildReply: async (apiResult) =>

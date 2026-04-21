@@ -22,6 +22,8 @@ export interface GlobalEnv {
     IMGPROXY_URL: string;
     OUTPUT_BG_IMG: string;
     TOKEN: string;
+    MODERATORS: string[];
+    MODERATOR_BADGE: string;
     PG_HOST?: string;
     PG_PORT?: string;
     PG_DB?: string;
