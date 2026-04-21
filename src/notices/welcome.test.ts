@@ -32,6 +32,8 @@ const makeCtx = (overrides?: Partial<NoticeExecCtx>): NoticeExecCtx => {
             IMGPROXY_URL: '',
             OUTPUT_BG_IMG: '',
             TOKEN: '',
+            MODERATORS: [],
+            MODERATOR_BADGE: '★',
             ...(overrides?.env ?? {}),
         },
         event: {
