@@ -1,10 +1,10 @@
 # 基础依赖阶段
-FROM node:22.11.0-alpine AS base
+FROM node:24.15.0-alpine AS base
 
 # 版本参数
 ARG TAG_NAME
 ENV APP_VERSION=$TAG_NAME
-ENV PNPM_VERSION=10.2.0
+ENV PNPM_VERSION=10.33.0
 ENV NODE_ENV=production
 
 # 安装基础依赖
@@ -59,8 +59,8 @@ COPY --from=builder /app/dist ./dist
 # 添加元数据
 LABEL maintainer="Kreedzt" \
     version=${TAG_NAME} \
-    description="RWR Imba QQ Bot" \
-    org.opencontainers.image.source="https://github.com/Kreedzt/rwr-imba-qq-bot"
+    description="RWR QQ Bot" \
+    org.opencontainers.image.source="https://github.com/rwr-infra/rwr-qq-bot"
 
 # 设置健康检查（使用 PORT 环境变量）
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

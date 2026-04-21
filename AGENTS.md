@@ -3,12 +3,12 @@
 Auto-generated from all feature plans. Last updated: 2026-01-27
 
 ## Active Technologies
-- TypeScript (strict) + Node.js 22.11.0 + Fastify, tracer, pnpm, Vitest, (current) `canvas@3.2.1` → (target) `skia-canvas@3.0.8` (002-migrate-skia-canvas)
+- TypeScript (strict) + Node.js 22.14.0 + Fastify, tracer, pnpm, Vitest, (current) `canvas@3.2.1` → (target) `skia-canvas@3.0.8` (002-migrate-skia-canvas)
 - Files (out/), optional ClickHouse (analytics) (002-migrate-skia-canvas)
-- TypeScript 5.7.2 with Node.js 22.11.0 + pg (PostgreSQL client), Fastify (web framework) (001-migrate-postgresql)
+- TypeScript 5.7.2 with Node.js 22.14.0 + pg (PostgreSQL client), Fastify (web framework) (001-migrate-postgresql)
 - PostgreSQL (migrating from ClickHouse) (001-migrate-postgresql)
 
-- TypeScript 5.7.2 with Node.js 22.11.0 (target: esnext) (001-dependency-upgrade-refactor)
+- TypeScript 5.7.2 with Node.js 22.14.0 (target: esnext) (001-dependency-upgrade-refactor)
 
 ## Project Structure
 
@@ -99,10 +99,10 @@ tests/              # Test files
 - Document complex logic with inline comments
 
 ## Recent Changes
-- 001-migrate-postgresql: Added TypeScript 5.7.2 with Node.js 22.11.0 + pg (PostgreSQL client), Fastify (web framework)
-- 002-migrate-skia-canvas: Added TypeScript (strict) + Node.js 22.11.0 + Fastify, tracer, pnpm, Vitest, (current) `canvas@3.2.1` → (target) `skia-canvas@3.0.8`
+- 001-migrate-postgresql: Added TypeScript 5.7.2 with Node.js 22.14.0 + pg (PostgreSQL client), Fastify (web framework)
+- 002-migrate-skia-canvas: Added TypeScript (strict) + Node.js 22.14.0 + Fastify, tracer, pnpm, Vitest, (current) `canvas@3.2.1` → (target) `skia-canvas@3.0.8`
 
-- 001-dependency-upgrade-refactor: Added TypeScript 5.7.2 with Node.js 22.11.0 (target: esnext)
+- 001-dependency-upgrade-refactor: Added TypeScript 5.7.2 with Node.js 22.14.0 (target: esnext)
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
