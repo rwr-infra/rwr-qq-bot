@@ -80,6 +80,8 @@ export function loadEnv(): GlobalEnv {
         ADMIN_QQ_LIST: parseNumberArray(_env.ADMIN_QQ_LIST ?? '[]'),
         PORT: parseInt(_env.PORT || '3000'),
         ACTIVE_COMMANDS: parseStringArray(_env.ACTIVE_COMMANDS ?? '[]'),
+        MODERATORS: parseStringArray(_env.MODERATORS ?? '[]'),
+        MODERATOR_BADGE: _env.MODERATOR_BADGE ?? '⭐',
     } as GlobalEnv;
 
     try {

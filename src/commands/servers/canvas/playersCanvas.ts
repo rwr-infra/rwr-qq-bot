@@ -9,10 +9,14 @@ import {
 } from '../utils/utils';
 import { BaseCanvas } from '../../../services/baseCanvas';
 
+const MODERATOR_BADGE_DEFAULT = '⭐';
+
 export class PlayersCanvas extends BaseCanvas {
     // constructor params
     serverList: OnlineServerItem[];
     fileName: string;
+    moderators: string[];
+    moderatorBadge: string;
 
     // render params data
     measureMaxWidth = 0;
@@ -33,10 +37,29 @@ export class PlayersCanvas extends BaseCanvas {
 
     totalFooter = '';
 
-    constructor(serverList: OnlineServerItem[], fileName: string) {
+    constructor(
+        serverList: OnlineServerItem[],
+        fileName: string,
+        moderators?: string[],
+        moderatorBadge?: string,
+    ) {
         super();
         this.serverList = serverList;
         this.fileName = fileName;
+        this.moderators = moderators ?? [];
+        this.moderatorBadge = moderatorBadge ?? MODERATOR_BADGE_DEFAULT;
+    }
+
+    private isModerator(playerName: string): boolean {
+        return this.moderators.some(
+            (m) => m.toUpperCase() === playerName.toUpperCase(),
+        );
+    }
+
+    private getPlayerDisplayName(playerName: string): string {
+        return this.isModerator(playerName)
+            ? `${playerName} ${this.moderatorBadge}`
+            : playerName;
     }
 
     measureTitle() {
@@ -69,8 +92,9 @@ export class PlayersCanvas extends BaseCanvas {
             // Players max width
             getPlayersInServer(s).forEach((p) => {
                 this.contentLines += 1;
-                if (p.length > this.maxLengthStr.length) {
-                    this.maxLengthStr = p;
+                const displayName = this.getPlayerDisplayName(p);
+                if (displayName.length > this.maxLengthStr.length) {
+                    this.maxLengthStr = displayName;
                 }
             });
         });
@@ -175,7 +199,12 @@ export class PlayersCanvas extends BaseCanvas {
             context.font = 'bold 16pt Consolas';
             context.fillStyle = '#a5f3fc';
             getPlayersInServer(s).forEach((p) => {
-                context.fillText(p, 20, 10 + this.renderStartY + 40);
+                const displayName = this.getPlayerDisplayName(p);
+                const textWidth = context.measureText(displayName).width;
+                if (textWidth > this.maxRectWidth) {
+                    this.maxRectWidth = textWidth;
+                }
+                context.fillText(displayName, 20, 10 + this.renderStartY + 40);
                 this.renderStartY += 40;
             });
 

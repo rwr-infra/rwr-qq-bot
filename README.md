@@ -36,6 +36,8 @@
 - PG_USER: PostgreSQL 用户名, 用于统计命令数据
 - PG_PASSWORD: PostgreSQL 密码, 用于统计命令数据
 - OUTPUT_BG_IMG: 背景图片路径, 用于 canvas 渲染时添加背景层
+- MODERATORS: 服务器管理员玩家名列表, 类型为 `JSON string[]`, eg: `["KREEDZT"]`。用于 `players` 命令中高亮显示管理员
+- MODERATOR_BADGE: 管理员标识字符, 类型为 `string`, 默认值为 `★`, eg: `⭐`
 
 ## 命令列表
 
