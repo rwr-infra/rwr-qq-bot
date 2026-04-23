@@ -41,6 +41,8 @@ ENV TZ=Asia/Shanghai
 
 # 服务端口（可通过环境变量覆盖）
 ENV PORT=3000
+# 监听所有接口，确保 Docker 内外均可访问
+ENV HOSTNAME=0.0.0.0
 
 # 运行时特有的依赖
 RUN set -eux; \
@@ -70,7 +72,7 @@ LABEL maintainer="Kreedzt" \
 
 # 设置健康检查（使用 PORT 环境变量）
 HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
-    CMD node -e "const req = require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.setTimeout(2500, () => process.exit(1));"
+    CMD node -e "const req = require('http').get('http://127.0.0.1:' + (process.env.PORT || 3000) + '/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.setTimeout(2500, () => process.exit(1));"
 
 # 声明暴露端口（默认3000，可通过环境变量 PORT 修改）
 EXPOSE ${PORT}
