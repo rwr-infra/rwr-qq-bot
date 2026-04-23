@@ -1,12 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as echarts from 'echarts';
-import { Resvg } from '@resvg/resvg-js';
 import { IAnalysisData } from '../types/types';
 import { OUTPUT_FOLDER } from '../types/constants';
 import { logger } from '../../../utils/logger';
 import { asImageRenderError } from '../../../services/imageRenderErrors';
 import { logImageRenderError } from '../../../services/imageRenderLogger';
+import { rasterizeSvgToPng } from './svgRasterizer';
 
 /**
  * 图表配置接口
@@ -107,14 +107,10 @@ export class ChartRenderer {
     }
 
     /**
-     * 将 SVG 转换为 PNG
+     * 将 SVG 转换为 PNG（使用 skia-canvas 栅格化，附带针对 ECharts SVG 的兼容清洗）
      */
     private async svgToPng(svg: string): Promise<Buffer> {
-        const resvg = new Resvg(svg, {
-            fitTo: { mode: 'width', value: this.width },
-            background: 'white',
-        });
-        return Buffer.from(resvg.render().asPng());
+        return rasterizeSvgToPng(svg, this.width, this.height);
     }
 
     /**

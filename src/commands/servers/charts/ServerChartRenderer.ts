@@ -1,12 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as echarts from 'echarts';
-import { Resvg } from '@resvg/resvg-js';
 import { IServerAnalyticsRecord } from '../types/types';
 import { OUTPUT_FOLDER } from '../types/constants';
 import { logger } from '../../../utils/logger';
 import { asImageRenderError } from '../../../services/imageRenderErrors';
 import { logImageRenderError } from '../../../services/imageRenderLogger';
+import { rasterizeSvgToPng } from './svgRasterizer';
 
 export interface ServerChartConfig {
     title: string;
@@ -155,8 +155,6 @@ export class ServerChartRenderer {
                     show: showEndLabel,
                     align: 'left',
                     padding: [2, 4],
-                    backgroundColor: 'rgba(255,255,255,0.85)',
-                    borderRadius: 2,
                     color: colors[index % colors.length],
                     formatter: (params: { seriesName: string }) => {
                         const name = params.seriesName;
@@ -247,11 +245,7 @@ export class ServerChartRenderer {
     }
 
     private async svgToPng(svg: string): Promise<Buffer> {
-        const resvg = new Resvg(svg, {
-            fitTo: { mode: 'width', value: this.width },
-            background: 'white',
-        });
-        return Buffer.from(resvg.render().asPng());
+        return rasterizeSvgToPng(svg, this.width, this.height);
     }
 
     private async savePng(buffer: Buffer, fileName: string): Promise<void> {
