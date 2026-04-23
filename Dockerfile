@@ -1,8 +1,5 @@
-# 允许按需覆盖基础 Node 镜像
-ARG NODE_IMAGE=node:24.15.0-alpine
-
 # 基础依赖阶段
-FROM ${NODE_IMAGE} AS base
+FROM node:24.15.0-bookworm-slim AS base
 
 # 版本参数
 ARG TAG_NAME
@@ -12,14 +9,9 @@ ENV NODE_ENV=production
 
 # 安装基础依赖
 RUN set -eux; \
-    if command -v apk >/dev/null 2>&1; then \
-        apk add --no-cache ca-certificates fontconfig; \
-        rm -rf /var/cache/apk/* /tmp/*; \
-    else \
-        apt-get update; \
-        apt-get install -y --no-install-recommends ca-certificates fontconfig; \
-        rm -rf /var/lib/apt/lists/* /tmp/*; \
-    fi; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates fontconfig; \
+    rm -rf /var/lib/apt/lists/* /tmp/*; \
     npm install -g pnpm@${PNPM_VERSION}; \
     pnpm config set store-dir /root/.local/share/pnpm/store; \
     rm -rf ~/.npm
@@ -52,21 +44,13 @@ ENV PORT=3000
 
 # 运行时特有的依赖
 RUN set -eux; \
-    if command -v apk >/dev/null 2>&1; then \
-        apk add --no-cache \
-            tzdata \
-            font-noto-emoji --repository https://nl.alpinelinux.org/alpine/edge/community \
-            wqy-zenhei --repository https://nl.alpinelinux.org/alpine/edge/community; \
-        rm -rf /var/cache/apk/* /tmp/*; \
-    else \
-        apt-get update; \
-        apt-get install -y --no-install-recommends \
-            tzdata \
-            fonts-noto-color-emoji \
-            fonts-noto-cjk \
-            fonts-wqy-zenhei; \
-        rm -rf /var/lib/apt/lists/* /tmp/*; \
-    fi; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        tzdata \
+        fonts-noto-color-emoji \
+        fonts-noto-cjk \
+        fonts-wqy-zenhei; \
+    rm -rf /var/lib/apt/lists/* /tmp/*; \
     fc-cache -fv
 
 # 设置工作目录并更改所有权
