@@ -48,6 +48,7 @@ ENV HOSTNAME=0.0.0.0
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
+        iputils-ping \
         tzdata \
         fonts-noto-color-emoji \
         fonts-noto-cjk \

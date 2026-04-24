@@ -4,6 +4,19 @@ import { FontLibrary } from 'skia-canvas';
 
 let initialized = false;
 
+export const CANVAS_FONT_FAMILY =
+    'Consolas, Noto Sans CJK SC, Noto Sans SC, WenQuanYi Zen Hei, Noto Color Emoji, sans-serif';
+
+export const CHART_FONT_FAMILY =
+    'Noto Sans CJK SC, Noto Color Emoji, sans-serif';
+
+export function buildCanvasFont(
+    sizePt: number,
+    weight: 'normal' | 'bold' = 'bold',
+): string {
+    return `${weight} ${sizePt}pt ${CANVAS_FONT_FAMILY}`;
+}
+
 export function initCanvasFonts() {
     if (initialized) {
         return;
