@@ -4,6 +4,7 @@ import * as echarts from 'echarts';
 import { IServerAnalyticsRecord } from '../types/types';
 import { OUTPUT_FOLDER } from '../types/constants';
 import { logger } from '../../../utils/logger';
+import { CHART_FONT_FAMILY } from '../../../services/canvasFonts';
 import { asImageRenderError } from '../../../services/imageRenderErrors';
 import { logImageRenderError } from '../../../services/imageRenderLogger';
 import { rasterizeSvgToPng } from './svgRasterizer';
@@ -141,6 +142,7 @@ export class ServerChartRenderer {
                     position: 'top',
                     fontSize: 10,
                     color: '#333',
+                    fontFamily: CHART_FONT_FAMILY,
                     formatter: (params: { value: number | null }) => {
                         if (
                             params.value === null ||
@@ -156,6 +158,7 @@ export class ServerChartRenderer {
                     align: 'left',
                     padding: [2, 4],
                     color: colors[index % colors.length],
+                    fontFamily: CHART_FONT_FAMILY,
                     formatter: (params: { seriesName: string }) => {
                         const name = params.seriesName;
                         if (name.length > 32) {
@@ -182,6 +185,9 @@ export class ServerChartRenderer {
 
         return {
             backgroundColor: '#fff',
+            textStyle: {
+                fontFamily: CHART_FONT_FAMILY,
+            },
             title: {
                 text: config.title,
                 textAlign: 'center',
@@ -191,8 +197,12 @@ export class ServerChartRenderer {
                         ? `仅展示在线人数最高的前 ${showRecords.length} 个服务器（其余 ${hiddenCount} 个已隐藏）`
                         : undefined,
                 textStyle: {
+                    fontFamily: CHART_FONT_FAMILY,
                     fontSize: 16,
                     fontWeight: 'bold',
+                },
+                subtextStyle: {
+                    fontFamily: CHART_FONT_FAMILY,
                 },
             },
             tooltip: {
@@ -220,11 +230,13 @@ export class ServerChartRenderer {
                 nameLocation: 'center',
                 nameGap: 42,
                 nameTextStyle: {
+                    fontFamily: CHART_FONT_FAMILY,
                     fontWeight: 700,
                 },
                 type: 'category',
                 boundaryGap: false,
                 axisLabel: {
+                    fontFamily: CHART_FONT_FAMILY,
                     margin: 12,
                     interval: downsampleFactor > 1 ? 0 : 0,
                 },
@@ -235,7 +247,11 @@ export class ServerChartRenderer {
                 nameGap: 30,
                 nameLocation: 'end',
                 nameTextStyle: {
+                    fontFamily: CHART_FONT_FAMILY,
                     fontWeight: 700,
+                },
+                axisLabel: {
+                    fontFamily: CHART_FONT_FAMILY,
                 },
                 type: 'value',
                 min: 0,

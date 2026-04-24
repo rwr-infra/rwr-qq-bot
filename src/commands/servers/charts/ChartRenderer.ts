@@ -4,6 +4,7 @@ import * as echarts from 'echarts';
 import { IAnalysisData } from '../types/types';
 import { OUTPUT_FOLDER } from '../types/constants';
 import { logger } from '../../../utils/logger';
+import { CHART_FONT_FAMILY } from '../../../services/canvasFonts';
 import { asImageRenderError } from '../../../services/imageRenderErrors';
 import { logImageRenderError } from '../../../services/imageRenderLogger';
 import { rasterizeSvgToPng } from './svgRasterizer';
@@ -62,17 +63,28 @@ export class ChartRenderer {
     private buildChartOption(config: ChartConfig): any {
         return {
             backgroundColor: '#fff',
+            textStyle: {
+                fontFamily: CHART_FONT_FAMILY,
+            },
             title: {
                 text: config.title,
                 textAlign: 'center',
                 left: '50%',
+                textStyle: {
+                    fontFamily: CHART_FONT_FAMILY,
+                    fontWeight: 700,
+                },
             },
             xAxis: {
                 name: config.xAxisName,
                 nameLocation: 'center',
                 nameGap: 30,
                 nameTextStyle: {
+                    fontFamily: CHART_FONT_FAMILY,
                     fontWeight: 700,
+                },
+                axisLabel: {
+                    fontFamily: CHART_FONT_FAMILY,
                 },
                 type: 'category',
                 data: config.data.map((d) => d.date),
@@ -82,7 +94,11 @@ export class ChartRenderer {
                 nameGap: 30,
                 nameLocation: 'end',
                 nameTextStyle: {
+                    fontFamily: CHART_FONT_FAMILY,
                     fontWeight: 700,
+                },
+                axisLabel: {
+                    fontFamily: CHART_FONT_FAMILY,
                 },
                 type: 'value',
             },
@@ -97,6 +113,7 @@ export class ChartRenderer {
                 {
                     data: config.data.map((d) => d.count),
                     label: {
+                        fontFamily: CHART_FONT_FAMILY,
                         show: true,
                         position: 'top',
                     },

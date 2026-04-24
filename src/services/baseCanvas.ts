@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { GlobalEnv } from '../types';
 import { CanvasImgService } from './canvasImg.service';
 import { Canvas2DContext, CanvasLike, toPngBuffer } from './canvasBackend';
+import { buildCanvasFont } from './canvasFonts';
 import { asImageRenderError } from './imageRenderErrors';
 import { logImageRenderError } from './imageRenderLogger';
 
@@ -86,7 +87,7 @@ export class BaseCanvas {
         }
 
         context.fillStyle = '#fff';
-        context.font = 'bold 10pt Consolas';
+        context.font = buildCanvasFont(10);
         context.textAlign = 'left';
 
         const fixedTime = getFixedFooterTime();

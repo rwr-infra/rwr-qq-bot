@@ -1,10 +1,14 @@
 import { BaseCanvas } from '../../services/baseCanvas';
-import { createCanvas, type Canvas2DContext } from '../../services/canvasBackend';
+import {
+    createCanvas,
+    type Canvas2DContext,
+} from '../../services/canvasBackend';
+import { buildCanvasFont } from '../../services/canvasFonts';
 import type { CheckLatencyResult, CheckReport } from './types';
 
-const TITLE_FONT = 'bold 20pt Consolas';
-const BODY_FONT = 'bold 20pt Consolas';
-const SMALL_FONT = 'bold 10pt Consolas';
+const TITLE_FONT = buildCanvasFont(20);
+const BODY_FONT = buildCanvasFont(20);
+const SMALL_FONT = buildCanvasFont(10);
 const LINE_HEIGHT = 40;
 const PADDING_X = 20;
 const CONTENT_START_X = 20;
@@ -202,7 +206,11 @@ export class CheckCanvas extends BaseCanvas {
         this.rectWidth = this.maxRectWidth + 20;
     }
 
-    private renderLayout(context: Canvas2DContext, width: number, height: number) {
+    private renderLayout(
+        context: Canvas2DContext,
+        width: number,
+        height: number,
+    ) {
         context.fillStyle = '#451a03';
         context.fillRect(0, 0, width, height);
     }
@@ -219,7 +227,11 @@ export class CheckCanvas extends BaseCanvas {
         ).width;
 
         context.fillStyle = '#fbbf24';
-        context.fillText(this.titleServerCountSection, 10 + titleStaticWidth, 10);
+        context.fillText(
+            this.titleServerCountSection,
+            10 + titleStaticWidth,
+            10,
+        );
 
         const titleServerWidth = context.measureText(
             this.titleServerCountSection,
@@ -240,7 +252,9 @@ export class CheckCanvas extends BaseCanvas {
             (item) => item.status === 'ok',
         ).length;
         const reachableColor =
-            serverOkCount === this.report.servers.length ? '#22c55e' : '#f97316';
+            serverOkCount === this.report.servers.length
+                ? '#22c55e'
+                : '#f97316';
         context.fillStyle = reachableColor;
         context.fillText(
             this.titleReachableCountSection,
@@ -284,11 +298,7 @@ export class CheckCanvas extends BaseCanvas {
 
         context.textAlign = 'right';
         context.fillStyle = statusColor;
-        context.fillText(
-            rightText,
-            rightAnchorX,
-            10 + this.renderStartY,
-        );
+        context.fillText(rightText, rightAnchorX, 10 + this.renderStartY);
         context.textAlign = 'left';
 
         this.renderStartY += LINE_HEIGHT;
