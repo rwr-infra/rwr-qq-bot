@@ -17,8 +17,8 @@ export interface GlobalEnv {
     TDOLL_SKIN_DATA_FILE: string;
     MAPS_DATA_FILE: string;
     QA_DATA_FILE: string;
-    DIFY_AI_TOKEN: string;
-    DIFY_AI_URL: string;
+    OPENAI_API_KEY: string;
+    OPENAI_API_URL: string;
     IMGPROXY_URL: string;
     OUTPUT_BG_IMG: string;
     TOKEN: string;

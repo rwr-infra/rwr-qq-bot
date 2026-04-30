@@ -1,41 +1,16 @@
-import * as jwt from 'jsonwebtoken';
-import { JwtHeader } from 'jsonwebtoken';
 import { MsgExecCtx } from '../../types';
 import { AI_MODEL_DISPLAY_NAME, AI_MODEL_NAME } from './constants';
 import { logger } from '../../utils/logger';
 import axios, { AxiosResponse } from 'axios';
-import { IDifyAIResponse } from './types';
-import _ from 'lodash';
+import { IOpenAIResponse } from './types';
 
-const genGLMJWT = (apiKey: string): string => {
-    const [key, secret] = apiKey.split('.');
-    return jwt.sign(
-        {
-            api_key: key,
-        },
-        secret,
-        {
-            algorithm: 'HS256',
-            expiresIn: '1h',
-            header: {
-                sign_type: 'SIGN',
-            } as unknown as JwtHeader,
-        }
-    );
-};
-
-const genGLMMessages = (
+const genUserMessage = (
     query: string
 ): Array<{
     role: string;
     content: string;
 }> => {
     return [
-        {
-            role: 'system',
-            content:
-                '作为一名智能客服, 你善于从知识库中总结提炼并思考知识的关联性, 并需要根据知识库内容用简洁和专业的来回答用户问题。如果无法从中得到答案，请说 “根据已知信息无法回答该问题” 或 “没有提供足够的相关信息”，不允许在答案中添加编造成分，答案请尽量中文，并且回答时末尾告知使用的文档名称。 ',
-        },
         {
             role: 'user',
             content: `${query}`,
@@ -46,13 +21,12 @@ const genGLMMessages = (
 export const getAIQAMatchRes = async (query: string, ctx: MsgExecCtx) => {
     const res = await getQAAIRes(
         query,
-        ctx.env.DIFY_AI_URL,
-        ctx.env.DIFY_AI_TOKEN,
-        ctx.event.user_id.toString()
+        ctx.env.OPENAI_API_URL,
+        ctx.env.OPENAI_API_KEY
     );
 
     if (res) {
-        return `${res}`;
+        return `${AI_MODEL_DISPLAY_NAME} ${res}`;
     }
 
     return `未匹配到指定问题, 请尝试其他问题或联系管理员更新知识库`;
@@ -61,14 +35,12 @@ export const getAIQAMatchRes = async (query: string, ctx: MsgExecCtx) => {
 export const getQAAIRes = async (
     query: string,
     url: string,
-    token: string,
-    user: string
+    apiKey: string
 ) => {
     const queryParams = {
-        inputs: {},
-        query,
-        response_mode: 'blocking',
-        user,
+        model: AI_MODEL_NAME,
+        messages: genUserMessage(query),
+        stream: false,
     };
 
     logger.info('queryParams:', queryParams);
@@ -76,29 +48,23 @@ export const getQAAIRes = async (
     try {
         const res = (await axios.post(url, queryParams, {
             headers: {
-                Authorization: `Bearer ${token}`,
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
             },
-        })) as AxiosResponse<IDifyAIResponse>;
+        })) as AxiosResponse<IOpenAIResponse>;
 
-        logger.info(`res answer:`, res.data?.answer);
+        const answer = res.data?.choices?.[0]?.message?.content;
+
+        logger.info(`res answer:`, answer);
 
         logger.info(
             `tokens cost:`,
-            res.data?.metadata.usage.total_tokens,
-            res.data.metadata.usage.total_price
+            res.data?.usage?.total_tokens
         );
 
-        const docsOutput = _.uniq(
-            res.data.metadata.retriever_resources.map(
-                (s) => `《${s.document_name}》`
-            )
-        ).join(', ');
-
-        return res.data.answer
-            ? `${res.data.answer}\n\n 引用文档: ${docsOutput}`
-            : '服务端响应失败';
+        return answer || '服务端响应失败';
     } catch (e) {
-        logger.error('call dify.ai error', e);
+        logger.error('call openai compatible api error', e);
         return '服务端响应失败';
     }
 };
