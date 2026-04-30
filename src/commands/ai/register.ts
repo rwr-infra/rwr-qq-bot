@@ -21,8 +21,8 @@ export const AiCommandRegister: IRegister = {
         });
 
         let replyText = '';
-        if (!ctx.env.DIFY_AI_TOKEN || !ctx.env.DIFY_AI_URL) {
-            replyText = '未配置 DIFY_AI_TOKEN 或 DIFY_AI_URL, 无法使用AI模型进行智能问答';
+        if (!ctx.env.OPENAI_API_KEY || !ctx.env.OPENAI_API_URL) {
+            replyText = '未配置 OPENAI_API_KEY 或 OPENAI_API_URL, 无法使用AI模型进行智能问答';
         } else {
             await ctx.reply(
                 `正在通过大语言模型查询中, 请耐心等待...`
