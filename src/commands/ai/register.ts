@@ -1,6 +1,8 @@
 import { IRegister } from '../../types';
 import { parseIgnoreSpace } from '../../utils/cmd';
+import { getStaticHttpPath } from '../../utils/cmdreq';
 import { getAIQAMatchRes } from './utils';
+import { AiCanvas } from './aiCanvas';
 
 export const AiCommandRegister: IRegister = {
     name: 'ai',
@@ -20,16 +22,25 @@ export const AiCommandRegister: IRegister = {
             }
         });
 
-        let replyText = '';
         if (!ctx.env.OPENAI_API_KEY || !ctx.env.OPENAI_API_URL) {
-            replyText = '未配置 OPENAI_API_KEY 或 OPENAI_API_URL, 无法使用AI模型进行智能问答';
-        } else {
-            await ctx.reply(
-                `正在通过大语言模型查询中, 请耐心等待...`
-            );
-            replyText = await getAIQAMatchRes(query, ctx);
+            await ctx.reply('未配置 OPENAI_API_KEY 或 OPENAI_API_URL, 无法使用AI模型进行智能问答');
+            return;
         }
 
+        await ctx.reply('正在通过大语言模型查询中, 请耐心等待...');
+
+        const answer = await getAIQAMatchRes(query, ctx);
+
+        if (answer.includes('服务端响应失败') || answer.includes('未匹配到')) {
+            await ctx.reply(answer);
+            return;
+        }
+
+        const fileName = `ai-${ctx.event.user_id}.png`;
+        const canvas = new AiCanvas(query, answer, fileName);
+        canvas.render();
+
+        const replyText = `[CQ:image,file=${getStaticHttpPath(ctx.env, fileName)},cache=0,c=8]`;
         await ctx.reply(replyText);
     },
 };
