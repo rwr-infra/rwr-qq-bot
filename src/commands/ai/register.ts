@@ -6,9 +6,9 @@ import { AiCanvas } from './aiCanvas';
 
 export const AiCommandRegister: IRegister = {
     name: 'ai',
-    description: '使用AI模型与知识库内容进行智能问答[20s CD]',
-    hint: ['例: #ai 你好'],
-    timesInterval: 20,
+    description: '使用AI模型与知识库内容进行智能问答[120s CD]',
+    hint: ['例: #ai 列举出 key=gkw_m4a1.weapon 的武器数据'],
+    timesInterval: 120,
     isAdmin: false,
     parseParams: (msg: string) => {
         return parseIgnoreSpace(['#ai'], msg);
