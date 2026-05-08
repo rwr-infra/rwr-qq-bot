@@ -285,8 +285,11 @@ export const PlayersCommandRegister = createServerCommand(
                 const serverList = await queryAllServers(
                     ctx.env.SERVERS_MATCH_REGEX,
                 );
+                const historicalServers =
+                    serverHistoryCache.getDisappearedServers(serverList);
                 printPlayersPng(
                     serverList,
+                    historicalServers,
                     PLAYERS_OUTPUT_FILE,
                     ctx.env.MODERATORS,
                     ctx.env.MODERATOR_BADGE,

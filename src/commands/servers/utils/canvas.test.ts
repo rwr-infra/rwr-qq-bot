@@ -86,7 +86,7 @@ describe('servers canvas print utilities', () => {
 
     it('prints players png', () => {
         const fileName = 'players-test.png';
-        const outputPath = printPlayersPng(servers, fileName);
+        const outputPath = printPlayersPng(servers, [], fileName);
         expect(outputPath.endsWith(path.join('out', fileName))).toBe(true);
         expect(fs.existsSync(outputPath)).toBe(true);
     });

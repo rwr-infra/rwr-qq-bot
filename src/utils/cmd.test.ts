@@ -117,5 +117,12 @@ describe('global utils', () => {
             expect(res.size).toBe(1);
             expect(res.get('KREEDZT 123 456')).toBe(true);
         });
+
+        it.concurrent('case-insensitive cmd stripping', () => {
+            const res = parseIgnoreSpace(['#ai'], '#AI 你好');
+
+            expect(res.size).toBe(1);
+            expect(res.get('你好')).toBe(true);
+        });
     });
 });
