@@ -37,7 +37,7 @@ export const parseIgnoreSpace = (cmdList: string[], raw: unknown): Map<string, b
     let step1Msg = raw;
 
     cmdList.forEach((cmd) => {
-        step1Msg = step1Msg.replace(cmd, '');
+        step1Msg = step1Msg.replace(new RegExp(cmd, 'i'), '');
     });
     let skipped = true;
     let targetName = '';

@@ -44,6 +44,7 @@ export const printServerListPng = (
  */
 export const printPlayersPng = (
     serverList: OnlineServerItem[],
+    historicalServers: HistoricalServerItem[],
     fileName: string,
     moderators?: string[],
     moderatorBadge?: string,
@@ -54,6 +55,7 @@ export const printPlayersPng = (
 
     const outputPath = new PlayersCanvas(
         serverList,
+        historicalServers,
         fileName,
         moderators,
         moderatorBadge,
