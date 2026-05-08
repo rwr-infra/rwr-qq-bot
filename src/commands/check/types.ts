@@ -10,6 +10,7 @@ export interface CheckLatencyResult {
 
 export interface CheckReport {
     remoteApi: CheckLatencyResult;
+    aiAgent: CheckLatencyResult;
     imageServer: CheckLatencyResult;
     database: CheckLatencyResult;
     servers: CheckLatencyResult[];

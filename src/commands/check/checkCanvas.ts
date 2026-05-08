@@ -100,7 +100,7 @@ export class CheckCanvas extends BaseCanvas {
             (item) => item.status === 'ok',
         ).length;
 
-        return `核心服务: 3 项, 服务器: ${this.report.servers.length} 项, 可达: ${serverOkCount}/${this.report.servers.length}`;
+        return `核心服务: 4 项, 服务器: ${this.report.servers.length} 项, 可达: ${serverOkCount}/${this.report.servers.length}`;
     }
 
     private buildTitleSections() {
@@ -108,7 +108,7 @@ export class CheckCanvas extends BaseCanvas {
             (item) => item.status === 'ok',
         ).length;
 
-        this.titleStaticSection = '网络连通性检查: 核心服务 3 项, 服务器 ';
+        this.titleStaticSection = '网络连通性检查: 核心服务 4 项, 服务器 ';
         this.titleServerCountSection = `${this.report.servers.length} 项`;
         this.titleReachableStaticSection = ', 可达 ';
         this.titleReachableCountSection = `${serverOkCount}/${this.report.servers.length}`;
@@ -122,6 +122,7 @@ export class CheckCanvas extends BaseCanvas {
     private getRows(): CheckLatencyResult[] {
         return [
             this.report.remoteApi,
+            this.report.aiAgent,
             this.report.imageServer,
             this.report.database,
             ...this.report.servers,
@@ -148,6 +149,7 @@ export class CheckCanvas extends BaseCanvas {
         this.maxRectWidth = 0;
         const summaryRows = [
             this.report.remoteApi,
+            this.report.aiAgent,
             this.report.imageServer,
             this.report.database,
         ];
@@ -330,6 +332,7 @@ export class CheckCanvas extends BaseCanvas {
 
         this.renderSectionHeader(context, '[核心服务]');
         this.renderRow(context, this.report.remoteApi);
+        this.renderRow(context, this.report.aiAgent);
         this.renderRow(context, this.report.imageServer);
         this.renderRow(context, this.report.database);
 

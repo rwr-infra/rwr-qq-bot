@@ -6,8 +6,9 @@
 
 ## 环境变量
 
--   OPENAI_API_URL: OpenAI Compatible API 请求 URL, 通常以 `/chat/completions` 结尾
+-   OPENAI_API_URL: 远程 Agent 基础地址 (如 `https://api.example.com`), 代码自动拼接 `/v1/chat/completions`
 -   OPENAI_API_KEY: OpenAI Compatible API 请求 Key, 为 Bearer Token 值
+-   OPENAI_TABLE_NAME: 远程 Agent 知识库表名 (可选, 如 vanilla_documents)
 
 ## 注册的指令
 
