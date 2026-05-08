@@ -1,5 +1,5 @@
 import { MsgExecCtx } from '../../types';
-import { AI_MODEL_DISPLAY_NAME, AI_MODEL_NAME } from './constants';
+import { AI_MODEL_DISPLAY_NAME, AI_MODEL_NAME, AI_CHAT_COMPLETIONS_PATH } from './constants';
 import { logger } from '../../utils/logger';
 import axios, { AxiosResponse } from 'axios';
 import { IOpenAIResponse } from './types';
@@ -22,7 +22,8 @@ export const getAIQAMatchRes = async (query: string, ctx: MsgExecCtx) => {
     const res = await getQAAIRes(
         query,
         ctx.env.OPENAI_API_URL,
-        ctx.env.OPENAI_API_KEY
+        ctx.env.OPENAI_API_KEY,
+        ctx.env.OPENAI_TABLE_NAME
     );
 
     if (res) {
@@ -34,14 +35,20 @@ export const getAIQAMatchRes = async (query: string, ctx: MsgExecCtx) => {
 
 export const getQAAIRes = async (
     query: string,
-    url: string,
-    apiKey: string
+    baseUrl: string,
+    apiKey: string,
+    tableName: string
 ) => {
-    const queryParams = {
+    const url = `${baseUrl.replace(/\/+$/, '')}${AI_CHAT_COMPLETIONS_PATH}`;
+    const queryParams: Record<string, unknown> = {
         model: AI_MODEL_NAME,
         messages: genUserMessage(query),
         stream: false,
     };
+
+    if (tableName) {
+        queryParams.table = tableName;
+    }
 
     logger.info('queryParams:', queryParams);
 

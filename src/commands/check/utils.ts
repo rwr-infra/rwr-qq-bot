@@ -9,6 +9,8 @@ import type { GlobalEnv } from '../../types';
 import { logger } from '../../utils/logger';
 import type { CheckLatencyResult, CheckReport } from './types';
 
+import { AI_HEALTH_PATH } from '../ai/constants';
+
 const RWR_SERVER_LIST_URL =
     'http://rwr.runningwithrifles.com/rwr_server_list/get_server_list.php?start=0&size=1&names=1';
 
@@ -156,6 +158,28 @@ const measureIcmpPingLatency = async (
     }
 };
 
+const measureAiAgentLatency = async (
+    env: GlobalEnv,
+): Promise<CheckLatencyResult> => {
+    if (!env.OPENAI_API_URL) {
+        return createSkippedResult('AI Agent', '-', '未配置 OPENAI_API_URL');
+    }
+
+    const baseUrl = env.OPENAI_API_URL.replace(/\/+$/, '');
+    const healthUrl = `${baseUrl}${AI_HEALTH_PATH}`;
+
+    return measureHttpLatency(
+        'AI Agent',
+        anonymizeTarget(baseUrl),
+        async () => {
+            await axios.get(healthUrl, {
+                timeout: HTTP_TIMEOUT_MS,
+                validateStatus: (status) => status >= 200 && status < 500,
+            });
+        },
+    );
+};
+
 const measureImageServerLatency = async (
     env: GlobalEnv,
 ): Promise<CheckLatencyResult> => {
@@ -244,8 +268,9 @@ const measureServersLatency = async (
 };
 
 export const buildCheckReport = async (env: GlobalEnv): Promise<CheckReport> => {
-    const [remoteApi, imageServer, database, servers] = await Promise.all([
+    const [remoteApi, aiAgent, imageServer, database, servers] = await Promise.all([
         measureRwrApiLatency(),
+        measureAiAgentLatency(env),
         measureImageServerLatency(env),
         measureDatabaseLatency(env),
         measureServersLatency(env),
@@ -253,6 +278,7 @@ export const buildCheckReport = async (env: GlobalEnv): Promise<CheckReport> => 
 
     return {
         remoteApi,
+        aiAgent,
         imageServer,
         database,
         servers,

@@ -19,6 +19,7 @@ export interface GlobalEnv {
     QA_DATA_FILE: string;
     OPENAI_API_KEY: string;
     OPENAI_API_URL: string;
+    OPENAI_TABLE_NAME: string;
     IMGPROXY_URL: string;
     OUTPUT_BG_IMG: string;
     TOKEN: string;
