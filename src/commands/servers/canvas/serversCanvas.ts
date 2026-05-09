@@ -236,10 +236,13 @@ export class ServersCanvas extends BaseCanvas {
             const elapsedMin = Math.ceil((Date.now() - s.lastSeenAt) / 60000);
             context.fillStyle = '#9ca3af';
             context.font = '12pt Consolas';
+            // Vertically center 12pt text within the 16pt line
+            const yOffset = 8 / 3;
+            const spaceWidth = context.measureText(' ').width;
             context.fillText(
                 `${elapsedMin}分钟前`,
-                20 + serverSectionWidth + playersSectionWidth + mapSectionWidth,
-                10 + this.renderStartY,
+                20 + serverSectionWidth + playersSectionWidth + mapSectionWidth + spaceWidth,
+                10 + this.renderStartY + yOffset,
             );
 
             context.font = '16pt Consolas';
