@@ -4,6 +4,7 @@ import { IMapImageConfigFile } from '../types/types';
 import { getStaticHttpPath } from '../../../utils/cmdreq';
 import { getMapShortName } from '../utils/utils';
 import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 
 export class MapImageService {
     private static inst: MapImageService | undefined;
@@ -35,8 +36,9 @@ export class MapImageService {
     }
 
     private async loadConfig(filePath: string) {
+        const resolvedPath = path.resolve(filePath);
         try {
-            const raw = await fs.readFile(filePath, 'utf8');
+            const raw = await fs.readFile(resolvedPath, 'utf8');
             const config = JSON.parse(raw) as IMapImageConfigFile;
             if (!Array.isArray(config.images)) {
                 logger.warn(
@@ -56,7 +58,10 @@ export class MapImageService {
                 `[MapImageService] Loaded ${config.images.length} entries`,
             );
         } catch (e) {
-            logger.warn('[MapImageService] Failed to load config:', e);
+            logger.warn(
+                `[MapImageService] Failed to load config from "${resolvedPath}":`,
+                e,
+            );
         }
     }
 
