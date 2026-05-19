@@ -126,6 +126,7 @@ out/                # Canvas image output directory (served as static /out/)
 - Loaded via `dotenv` in `src/utils/env.ts`
 - **Parsing quirks**: Values are stripped of surrounding quotes (`'` or `"`). Arrays are parsed as JSON (e.g., `ACTIVE_COMMANDS=["fuck","roll"]`)
 - `START_MATCH` is parsed specially to extract the command prefix
+- **Map image config**: `MAP_IMAGE_CONFIG_FILE` (path to `map_images.json`) is optional. When set, `MapImageService` loads a `{ images: [{ path, image }] }` config for map detail images. `MAP_IMAGE_BASE_URL` serves as fallback when no config match is found. Use `scripts/syncMapImages.js` to sync from a remote HTTP endpoint.
 
 ## Logging
 
