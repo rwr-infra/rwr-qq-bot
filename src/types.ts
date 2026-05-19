@@ -30,6 +30,8 @@ export interface GlobalEnv {
     PG_DB?: string;
     PG_USER?: string;
     PG_PASSWORD?: string;
+    MAP_IMAGE_BASE_URL?: string;
+    MAP_IMAGE_CONFIG_FILE?: string;
 }
 
 export interface BaseEvent {

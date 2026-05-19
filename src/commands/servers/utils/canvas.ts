@@ -9,6 +9,7 @@ import { ServersCanvas } from '../canvas/serversCanvas';
 import { PlayersCanvas } from '../canvas/playersCanvas';
 import { WhereisCanvas } from '../canvas/whereisCanvas';
 import { MapsCanvas } from '../canvas/mapsCanvas';
+import { MapDetailCanvas } from '../canvas/mapDetailCanvas';
 
 const OUTPUT_FOLDER = 'out';
 
@@ -101,6 +102,24 @@ export const printMapPng = (
     }
 
     const outputPath = new MapsCanvas(serverList, mapData, fileName).render();
+
+    return outputPath;
+};
+
+export const printMapDetailPng = (
+    map: IMapDataItem,
+    servers: OnlineServerItem[],
+    fileName: string,
+): string => {
+    if (!fs.existsSync(OUTPUT_FOLDER)) {
+        fs.mkdirSync(OUTPUT_FOLDER);
+    }
+
+    const outputPath = new MapDetailCanvas(
+        map,
+        servers,
+        fileName,
+    ).render();
 
     return outputPath;
 };

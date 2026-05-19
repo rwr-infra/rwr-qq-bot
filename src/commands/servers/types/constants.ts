@@ -11,6 +11,7 @@ export const ANALYSIS_HOURS_OUTPUT_FILE = 'analysis_hours.png';
 export const ANALYSIS_HOURS_DATA_FILE = 'analysis_hours.json';
 
 export const MAPS_OUTPUT_FILE = 'maps.png';
+export const MAP_DETAIL_OUTPUT_FILE = 'map_detail.png';
 
 export const PLAYERS_OUTPUT_FILE = 'players.png';
 
