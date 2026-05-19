@@ -64,3 +64,13 @@ export interface IServerAnalyticsRecord {
     serverName: string;
     data: IServerAnalyticsHourlyData[];
 }
+
+export interface IMapImageConfigItem {
+    path: string;
+    image: string;
+    name?: string;
+}
+
+export interface IMapImageConfigFile {
+    images: IMapImageConfigItem[];
+}

@@ -430,3 +430,67 @@ export const getPlayersInServer = (server: OnlineServerItem): string[] => {
 
     return playersArr;
 };
+
+export type MapQueryResult =
+    | { type: 'exact'; map: IMapDataItem }
+    | { type: 'fuzzy'; maps: IMapDataItem[] }
+    | { type: 'none' };
+
+export const findMapByQuery = (
+    query: string,
+    mapData: IMapDataItem[],
+): MapQueryResult => {
+    const exactId = mapData.find((m) => m.id === query);
+    if (exactId) return { type: 'exact', map: exactId };
+
+    const exactName = mapData.find((m) => m.name === query);
+    if (exactName) return { type: 'exact', map: exactName };
+
+    const queryLower = query.toLowerCase();
+    const fuzzy = mapData.filter(
+        (m) =>
+            m.id.toLowerCase().includes(queryLower) ||
+            m.name.toLowerCase().includes(queryLower),
+    );
+    if (fuzzy.length === 1) return { type: 'exact', map: fuzzy[0] };
+    if (fuzzy.length > 1) return { type: 'fuzzy', maps: fuzzy };
+
+    return { type: 'none' };
+};
+
+export const getServersForMap = (
+    mapId: string,
+    serverList: OnlineServerItem[],
+): OnlineServerItem[] => {
+    return serverList
+        .filter((s) => getMapShortName(s.map_id) === mapId)
+        .sort((a, b) => b.current_players - a.current_players);
+};
+
+export const buildMapDetailReply = (
+    map: IMapDataItem,
+    servers: OnlineServerItem[],
+    mapImageUrl?: string,
+): string => {
+    let reply = `📍 地图: ${map.name} (${map.id})\n`;
+    reply += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+
+    if (servers.length === 0) {
+        reply += `当前没有服务器正在运行此地图\n`;
+    } else {
+        for (const s of servers) {
+            const status =
+                s.current_players === s.max_players ? '已满' : '在线';
+            reply += `  ${s.name}  | ${s.current_players}/${s.max_players} 玩家 | ${status}\n`;
+        }
+    }
+
+    reply += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    reply += `共 ${servers.length} 个服务器正在运行此地图`;
+
+    if (mapImageUrl) {
+        reply += `\n[CQ:image,file=${mapImageUrl},cache=0,c=8]`;
+    }
+
+    return reply;
+};

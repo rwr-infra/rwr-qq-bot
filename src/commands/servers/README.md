@@ -54,16 +54,20 @@
 
 ### 用途
 
-根据 MAPS_DATA_FILE 提供的地图数据, 生成地图列表图片输出
+根据 MAPS_DATA_FILE 提供的地图数据, 生成地图列表图片输出。支持查询指定地图详情（服务器列表 + 地图缩略图）。
 
 ### 环境变量
 
--   MAPS_DATA_FILE: 用于提供地图数据的 JSON 数据文件名
+-   MAPS_DATA_FILE: 用于提供地图数据的 JSON 数据文件名, 格式 `[{ "id": "map105", "name": "Map Name" }]`
+-   MAP_IMAGE_CONFIG_FILE: 地图图片配置文件路径, 格式 `{ "images": [{ "path": "media/.../map105", "image": "url" }] }`, 可通过 `scripts/syncMapImages.js` 从远程端点同步生成
+-   MAP_IMAGE_BASE_URL: 无配置匹配时的兜底图片 URL 前缀, 拼接方式为 `<BASE_URL><shortName>.png`
 -   OUTPUT_BG_IMG: 将输出的图片添加背景图 layer 层, 位于底色上方
 
 ### 注册的指令
 
 -   maps: 根据 MAPS_DATA_FILE 提供的地图数据, 生成地图列表图片输出
+    -   无参数: 生成完整地图列表图片
+    -   带参数 (如 `#maps map105`): 查询指定地图详情, 输出包含服务器列表图片和地图缩略图
 -   m: maps 的别名
 
 ## players

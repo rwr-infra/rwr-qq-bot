@@ -27,6 +27,8 @@
 - TDOLL_DATA_FILE: 战术人形数据文件路径
 - TDOLL_SKIN_DATA_FILE: 战术人形皮肤数据文件路径
 - MAPS_DATA_FILE: 地图数据文件路径
+- MAP_IMAGE_CONFIG_FILE: 地图图片配置文件路径, 格式 `{ "images": [{ "path": "...", "image": "..." }] }`, 可通过 `scripts/syncMapImages.js` 从远程端点同步
+- MAP_IMAGE_BASE_URL: 地图图片兜底 URL 前缀, 无配置匹配时拼接为 `<BASE_URL><shortName>.png`
 - QA_DATA_FILE: 自助问答数据文件路径
 - DIFY_AI_URL: DIFY AI 请求 URL (包含 `/chat-messages`)
 - DIFY_AI_TOKEN: DIFY AI 请求 Token
@@ -49,7 +51,7 @@
 | servers | 服务器信息 (图片) | 否 | `#servers` |
 | whereis / w | 玩家所在服务器 | 否 | `#whereis player1` |
 | analytics / a | 服务器玩家统计 | 否 | `#analytics d` |
-| maps / m | 地图列表 | 否 | `#maps` |
+| maps / m | 地图列表/详情 | 否 | `#maps` / `#maps map105` |
 | players / p | 服务器玩家列表 | 否 | `#players` |
 | tdoll / td | 人形数据查询 | 否 | `#tdoll M4A1` |
 | tdollskin / ts | 人形皮肤查询 | 否 | `#tdollskin 3` |

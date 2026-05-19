@@ -3,17 +3,24 @@ import { GlobalEnv, MsgExecCtx, IRegister } from '../../types';
 import { getStaticHttpPath } from '../../utils/cmdreq';
 import {
     printMapPng,
+    printMapDetailPng,
     printPlayersPng,
     printServerListPng,
     printUserInServerListPng,
 } from './utils/canvas';
 import {
     MAPS_OUTPUT_FILE,
+    MAP_DETAIL_OUTPUT_FILE,
     PLAYERS_OUTPUT_FILE,
     SERVERS_OUTPUT_FILE,
     WHEREIS_OUTPUT_FILE,
 } from './types/constants';
-import { getUserMatchedList, queryAllServers } from './utils/utils';
+import {
+    getUserMatchedList,
+    queryAllServers,
+    findMapByQuery,
+    getServersForMap,
+} from './utils/utils';
 import {
     printChartPng,
     printHoursChartPng,
@@ -24,6 +31,7 @@ import { AnalysticsHoursTask } from './tasks/analyticsHoursTask';
 import { AnalysticsServerTask } from './tasks/analyticsServerTask';
 import { parseIgnoreSpace } from '../../utils/cmd';
 import { MapsDataService } from './services/mapsData.service';
+import { MapImageService } from './services/mapImage.service';
 import { CanvasImgService } from '../../services/canvasImg.service';
 import {
     serverCommandCache,
@@ -316,11 +324,69 @@ export const MapsCommandRegister: IRegister = {
         {
             name: 'maps',
             alias: 'm',
-            description: '查询所有 rwr 地图列表.[10s CD]',
-            hint: ['按地图顺序查询服务器状态列表: #maps'],
+            description: '查询所有 rwr 地图列表或指定地图详情.[10s CD]',
+            hint: [
+                '按地图顺序查询服务器状态列表: #maps',
+                '查询指定地图详情: #maps map105',
+            ],
             timesInterval: 10,
         },
         async (ctx) => {
+            if (ctx.params.size > 0) {
+                let query = '';
+                ctx.params.forEach((_v, k) => {
+                    if (!query) query = k;
+                });
+
+                const mapData = MapsDataService.getInst().getData();
+                const result = findMapByQuery(query, mapData);
+
+                if (result.type === 'none') {
+                    await ctx.reply(
+                        `未找到与"${query}"匹配的地图，请检查输入`,
+                    );
+                    return;
+                }
+
+                if (result.type === 'fuzzy') {
+                    const candidates = result.maps
+                        .slice(0, 10)
+                        .map((m) => `  - ${m.name} (${m.id})`)
+                        .join('\n');
+                    await ctx.reply(
+                        `找到多个匹配的地图，请缩小范围：\n${candidates}`,
+                    );
+                    return;
+                }
+
+                const serverList = await queryAllServers(
+                    ctx.env.SERVERS_MATCH_REGEX,
+                );
+                const servers = getServersForMap(result.map.id, serverList);
+
+                printMapDetailPng(
+                    result.map,
+                    servers,
+                    MAP_DETAIL_OUTPUT_FILE,
+                );
+
+                const mapImageService = MapImageService.getInst();
+                const sampleServer = servers[0];
+                const mapImageUrl = mapImageService.getImageUrl(
+                    sampleServer?.map_id ?? result.map.id,
+                    result.map.id,
+                );
+
+                let reply = `[CQ:image,file=${getStaticHttpPath(ctx.env, MAP_DETAIL_OUTPUT_FILE)},cache=0,c=8]`;
+
+                if (mapImageUrl) {
+                    reply += `\n[CQ:image,file=${mapImageUrl},cache=0,c=8]`;
+                }
+
+                await ctx.reply(reply);
+                return;
+            }
+
             await executeSharedGroupCommand(ctx, {
                 command: 'maps',
                 params: {},
@@ -347,9 +413,11 @@ export const MapsCommandRegister: IRegister = {
             });
         },
     ),
+    parseParams: (msg: string) => parseIgnoreSpace(['#maps', '#m'], msg),
     init: async (env: GlobalEnv): Promise<void> => {
         MapsDataService.init(env.MAPS_DATA_FILE);
         await MapsDataService.getInst().refresh();
+        await MapImageService.getInst().init(env);
     },
 };
 
