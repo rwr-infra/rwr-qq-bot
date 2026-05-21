@@ -363,10 +363,16 @@ export const MapsCommandRegister: IRegister = {
                     ctx.env.SERVERS_MATCH_REGEX,
                 );
                 const servers = getServersForMap(result.map.id, serverList);
+                const historicalServers =
+                    serverHistoryCache.getDisappearedServers(serverList);
+                const filteredHistorical = historicalServers.filter(
+                    (s) => getMapShortName(s.map_id) === result.map.id,
+                );
 
                 printMapDetailPng(
                     result.map,
                     servers,
+                    filteredHistorical,
                     MAP_DETAIL_OUTPUT_FILE,
                 );
 
@@ -395,8 +401,11 @@ export const MapsCommandRegister: IRegister = {
                     const serverList = await queryAllServers(
                         ctx.env.SERVERS_MATCH_REGEX,
                     );
+                    const historicalServers =
+                        serverHistoryCache.getDisappearedServers(serverList);
                     printMapPng(
                         serverList,
+                        historicalServers,
                         MapsDataService.getInst().getData(),
                         MAPS_OUTPUT_FILE,
                     );

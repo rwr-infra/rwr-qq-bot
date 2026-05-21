@@ -93,7 +93,7 @@ describe('servers canvas print utilities', () => {
 
     it('prints maps png', () => {
         const fileName = 'maps-test.png';
-        const outputPath = printMapPng(servers, maps, fileName);
+        const outputPath = printMapPng(servers, [], maps, fileName);
         expect(outputPath.endsWith(path.join('out', fileName))).toBe(true);
         expect(fs.existsSync(outputPath)).toBe(true);
     });

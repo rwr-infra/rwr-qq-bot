@@ -1,15 +1,19 @@
 import { createCanvas, Canvas2DContext } from '../../../services/canvasBackend';
-import { IMapDataItem, OnlineServerItem } from '../types/types';
+import { HistoricalServerItem, IMapDataItem, OnlineServerItem } from '../types/types';
 import {
     calcCanvasTextWidth,
     getCountColor,
+    getServerInfoDisplaySectionText,
     getMapShortName,
 } from '../utils/utils';
 import { BaseCanvas } from '../../../services/baseCanvas';
 
+const HISTORY_LINE_HEIGHT = 30;
+
 export class MapDetailCanvas extends BaseCanvas {
     map: IMapDataItem;
     servers: OnlineServerItem[];
+    historicalServers: HistoricalServerItem[];
     fileName: string;
 
     renderWidth = 0;
@@ -22,11 +26,13 @@ export class MapDetailCanvas extends BaseCanvas {
     constructor(
         map: IMapDataItem,
         servers: OnlineServerItem[],
+        historicalServers: HistoricalServerItem[],
         fileName: string,
     ) {
         super();
         this.map = map;
         this.servers = servers;
+        this.historicalServers = historicalServers;
         this.fileName = fileName;
     }
 
@@ -66,6 +72,22 @@ export class MapDetailCanvas extends BaseCanvas {
             this.maxRectWidth = summaryWidth;
         }
         this.contentLines += 1;
+
+        if (this.historicalServers.length > 0) {
+            this.contentLines += 1;
+            const titleWidth = calcCanvasTextWidth('近5分钟离线服务器', 14) + 40;
+            if (titleWidth > this.maxRectWidth) {
+                this.maxRectWidth = titleWidth;
+            }
+            for (const s of this.historicalServers) {
+                const line = `${s.name}  | ${s.current_players}/${s.max_players} 玩家 | 离线  5分钟前`;
+                const lineWidth = calcCanvasTextWidth(line, 16) + 80;
+                if (lineWidth > this.maxRectWidth) {
+                    this.maxRectWidth = lineWidth;
+                }
+                this.contentLines += 1;
+            }
+        }
 
         this.renderHeight = 80 + this.contentLines * 40 + 40;
         this.renderWidth = this.maxRectWidth;
@@ -158,6 +180,61 @@ export class MapDetailCanvas extends BaseCanvas {
         this.renderStartY += 40;
     }
 
+    renderHistoricalList(context: Canvas2DContext) {
+        if (this.historicalServers.length === 0) {
+            return;
+        }
+
+        context.strokeStyle = '#f48225';
+        context.beginPath();
+        context.moveTo(10, this.renderStartY);
+        context.lineTo(this.renderWidth - 10, this.renderStartY);
+        context.stroke();
+        this.renderStartY += 10;
+
+        context.font = 'bold 14pt Consolas';
+        context.textAlign = 'left';
+        context.textBaseline = 'top';
+        context.fillStyle = '#9ca3af';
+        context.fillText('近5分钟离线服务器', 20, this.renderStartY);
+        this.renderStartY += 40;
+
+        context.font = '16pt Consolas';
+
+        this.historicalServers.forEach((s) => {
+            context.fillStyle = '#6b7280';
+            context.fillText(s.name, 20, this.renderStartY);
+
+            const nameWidth = context.measureText(s.name).width;
+
+            context.fillStyle = '#9ca3af';
+            const playersText = `  | ${s.current_players}/${s.max_players} 玩家`;
+            context.fillText(playersText, 20 + nameWidth, this.renderStartY);
+
+            const playersWidth = context.measureText(playersText).width;
+            context.fillStyle = '#9ca3af';
+            const statusText = ` | 离线`;
+            context.fillText(
+                statusText,
+                20 + nameWidth + playersWidth,
+                this.renderStartY,
+            );
+
+            const statusWidth = context.measureText(statusText).width;
+            const elapsedMin = Math.ceil((Date.now() - s.lastSeenAt) / 60000);
+            context.font = '12pt Consolas';
+            const yOffset = 8 / 3;
+            context.fillText(
+                `  ${elapsedMin}分钟前`,
+                20 + nameWidth + playersWidth + statusWidth,
+                this.renderStartY + yOffset,
+            );
+
+            context.font = '16pt Consolas';
+            this.renderStartY += HISTORY_LINE_HEIGHT;
+        });
+    }
+
     render() {
         this.record();
         this.measure();
@@ -169,6 +246,7 @@ export class MapDetailCanvas extends BaseCanvas {
         this.renderBgImg(context, this.renderWidth, this.renderHeight);
         this.renderTitle(context);
         this.renderServerList(context);
+        this.renderHistoricalList(context);
         this.renderFooter(context);
 
         return super.writeFile(canvas, this.fileName);
