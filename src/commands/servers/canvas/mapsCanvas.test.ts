@@ -39,7 +39,7 @@ describe('MapsCanvas', () => {
     ] as IMapDataItem[];
 
     beforeEach(() => {
-        mapsCanvas = new MapsCanvas(mockServers, mockMaps, 'test.png');
+        mapsCanvas = new MapsCanvas(mockServers, [], mockMaps, 'test.png');
     });
 
     it('should initialize correctly', () => {

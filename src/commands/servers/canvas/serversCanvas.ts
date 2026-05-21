@@ -236,7 +236,6 @@ export class ServersCanvas extends BaseCanvas {
             const elapsedMin = Math.ceil((Date.now() - s.lastSeenAt) / 60000);
             context.fillStyle = '#9ca3af';
             context.font = '12pt Consolas';
-            // Vertically center 12pt text within the 16pt line
             const yOffset = 8 / 3;
             const spaceWidth = context.measureText(' ').width;
             context.fillText(
@@ -246,6 +245,15 @@ export class ServersCanvas extends BaseCanvas {
             );
 
             context.font = '16pt Consolas';
+            const allText =
+                sectionData.serverSection +
+                sectionData.playersSection +
+                sectionData.mapSection;
+            const allTextWidth = context.measureText(allText).width + spaceWidth + context.measureText(`${elapsedMin}分钟前`).width;
+            if (allTextWidth > this.maxRectWidth) {
+                this.maxRectWidth = allTextWidth;
+            }
+
             this.renderStartY += HISTORY_LINE_HEIGHT;
         });
     }
@@ -272,8 +280,8 @@ export class ServersCanvas extends BaseCanvas {
         this.renderTitle(context);
         const titleWidth = context.measureText(this.totalTitle).width + 30;
         this.renderList(context);
-        const listWidth = this.maxRectWidth + 40;
         this.renderHistoricalList(context);
+        const listWidth = this.maxRectWidth + 40;
         this.renderFooter(context);
         const footerWidth = context.measureText(this.totalFooter).width + 30;
 

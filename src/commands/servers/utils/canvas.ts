@@ -94,6 +94,7 @@ export const printUserInServerListPng = (
 
 export const printMapPng = (
     serverList: OnlineServerItem[],
+    historicalServers: HistoricalServerItem[],
     mapData: IMapDataItem[],
     fileName: string,
 ): string => {
@@ -101,7 +102,7 @@ export const printMapPng = (
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
-    const outputPath = new MapsCanvas(serverList, mapData, fileName).render();
+    const outputPath = new MapsCanvas(serverList, historicalServers, mapData, fileName).render();
 
     return outputPath;
 };
@@ -109,6 +110,7 @@ export const printMapPng = (
 export const printMapDetailPng = (
     map: IMapDataItem,
     servers: OnlineServerItem[],
+    historicalServers: HistoricalServerItem[],
     fileName: string,
 ): string => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
@@ -118,6 +120,7 @@ export const printMapDetailPng = (
     const outputPath = new MapDetailCanvas(
         map,
         servers,
+        historicalServers,
         fileName,
     ).render();
 
