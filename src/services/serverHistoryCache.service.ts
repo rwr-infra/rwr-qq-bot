@@ -11,8 +11,14 @@ interface SnapshotEntry {
     lastSeenAt: number;
 }
 
+interface MapStartEntry {
+    mapId: string;
+    startedAt: number;
+}
+
 class ServerHistoryCacheService {
     private snapshots = new Map<string, SnapshotEntry>();
+    private mapStartTimes = new Map<string, MapStartEntry>();
 
     private getServerKey(address: string, port: number): string {
         return `${address}:${port}`;
@@ -31,6 +37,14 @@ class ServerHistoryCacheService {
                 this.snapshots.set(key, {
                     server,
                     lastSeenAt: now,
+                });
+            }
+
+            const mapEntry = this.mapStartTimes.get(key);
+            if (!mapEntry || mapEntry.mapId !== server.map_id) {
+                this.mapStartTimes.set(key, {
+                    mapId: server.map_id,
+                    startedAt: now,
                 });
             }
         }
@@ -71,8 +85,15 @@ class ServerHistoryCacheService {
         for (const [key, entry] of this.snapshots) {
             if (now - entry.lastSeenAt > HISTORY_TTL_MS) {
                 this.snapshots.delete(key);
+                this.mapStartTimes.delete(key);
             }
         }
+    }
+
+    getMapStartedAt(address: string, port: number): number | null {
+        const key = this.getServerKey(address, port);
+        const entry = this.mapStartTimes.get(key);
+        return entry ? entry.startedAt : null;
     }
 
     getStats(): { snapshotCount: number } {

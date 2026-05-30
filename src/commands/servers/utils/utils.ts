@@ -494,3 +494,15 @@ export const buildMapDetailReply = (
 
     return reply;
 };
+
+export const formatMapDuration = (startedAt: number | null): string => {
+    if (startedAt === null) return '-';
+    const ms = Date.now() - startedAt;
+    if (ms < 0) return '-';
+    if (ms < 60_000) return '<1m';
+    const totalMin = Math.floor(ms / 60_000);
+    if (totalMin < 60) return `${totalMin}m`;
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return m > 0 ? `${h}h${m}m` : `${h}h`;
+};

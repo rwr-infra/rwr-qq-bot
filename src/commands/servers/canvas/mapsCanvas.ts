@@ -6,6 +6,7 @@ import {
     getServerInfoDisplaySectionText,
     getMapTextInCanvas,
     getMapShortName,
+    formatMapDuration,
 } from '../utils/utils';
 import { BaseCanvas } from '../../../services/baseCanvas';
 
@@ -16,6 +17,7 @@ export class MapsCanvas extends BaseCanvas {
     serverList: OnlineServerItem[];
     mapData: IMapDataItem[];
     fileName: string;
+    mapStartedAtMap: Map<string, number | null> = new Map();
 
     // render params data
     measureMaxWidth = 0;
@@ -35,11 +37,13 @@ export class MapsCanvas extends BaseCanvas {
         serverList: OnlineServerItem[],
         mapData: IMapDataItem[],
         fileName: string,
+        mapStartedAtMap: Map<string, number | null> = new Map(),
     ) {
         super();
         this.serverList = serverList;
         this.mapData = mapData;
         this.fileName = fileName;
+        this.mapStartedAtMap = mapStartedAtMap;
     }
 
     measureTitle() {
@@ -174,13 +178,25 @@ export class MapsCanvas extends BaseCanvas {
                         10 + this.renderStartY,
                     );
 
+                    const playersWidth = context.measureText(serverText.playersSection).width;
+                    const serverKey = `${s.address}:${s.port}`;
+                    const durationText = `  ${formatMapDuration(this.mapStartedAtMap.get(serverKey) ?? null)}`;
+                    context.fillStyle = '#6b7280';
+                    context.fillText(
+                        durationText,
+                        20 + UNDER_MAP_SERVER_SPACING + serverSectionWidth + playersWidth,
+                        10 + this.renderStartY,
+                    );
+
                     this.renderStartY += 40;
 
                     const allText =
                         serverText.serverSection + serverText.playersSection;
+                    const durationWidth = context.measureText(durationText).width;
                     const allTextWidth =
                         context.measureText(allText).width +
-                        UNDER_MAP_SERVER_SPACING;
+                        UNDER_MAP_SERVER_SPACING +
+                        durationWidth;
 
                     if (allTextWidth > this.maxRectWidth) {
                         this.maxRectWidth = allTextWidth;
