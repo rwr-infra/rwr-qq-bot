@@ -5,6 +5,7 @@ import {
     IUserMatchedServerItem,
     OnlineServerItem,
 } from '../types/types';
+import { serverHistoryCache } from '../../../services/serverHistoryCache.service';
 import { ServersCanvas } from '../canvas/serversCanvas';
 import { PlayersCanvas } from '../canvas/playersCanvas';
 import { WhereisCanvas } from '../canvas/whereisCanvas';
@@ -92,6 +93,15 @@ export const printUserInServerListPng = (
     return outputPath;
 };
 
+function buildMapStartedAtMap(serverList: OnlineServerItem[]): Map<string, number | null> {
+    return new Map(
+        serverList.map((s) => [
+            `${s.address}:${s.port}`,
+            serverHistoryCache.getMapStartedAt(s.address, s.port),
+        ]),
+    );
+}
+
 export const printMapPng = (
     serverList: OnlineServerItem[],
     mapData: IMapDataItem[],
@@ -101,7 +111,8 @@ export const printMapPng = (
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
-    const outputPath = new MapsCanvas(serverList, mapData, fileName).render();
+    const mapStartedAtMap = buildMapStartedAtMap(serverList);
+    const outputPath = new MapsCanvas(serverList, mapData, fileName, mapStartedAtMap).render();
 
     return outputPath;
 };
@@ -115,10 +126,12 @@ export const printMapDetailPng = (
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
+    const mapStartedAtMap = buildMapStartedAtMap(servers);
     const outputPath = new MapDetailCanvas(
         map,
         servers,
         fileName,
+        mapStartedAtMap,
     ).render();
 
     return outputPath;

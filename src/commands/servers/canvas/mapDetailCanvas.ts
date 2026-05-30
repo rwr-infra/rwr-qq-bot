@@ -4,6 +4,7 @@ import {
     calcCanvasTextWidth,
     getCountColor,
     getMapShortName,
+    formatMapDuration,
 } from '../utils/utils';
 import { BaseCanvas } from '../../../services/baseCanvas';
 
@@ -11,6 +12,7 @@ export class MapDetailCanvas extends BaseCanvas {
     map: IMapDataItem;
     servers: OnlineServerItem[];
     fileName: string;
+    mapStartedAtMap: Map<string, number | null> = new Map();
 
     renderWidth = 0;
     renderHeight = 0;
@@ -23,11 +25,13 @@ export class MapDetailCanvas extends BaseCanvas {
         map: IMapDataItem,
         servers: OnlineServerItem[],
         fileName: string,
+        mapStartedAtMap: Map<string, number | null> = new Map(),
     ) {
         super();
         this.map = map;
         this.servers = servers;
         this.fileName = fileName;
+        this.mapStartedAtMap = mapStartedAtMap;
     }
 
     measure() {
@@ -51,7 +55,7 @@ export class MapDetailCanvas extends BaseCanvas {
             for (const s of this.servers) {
                 const status =
                     s.current_players === s.max_players ? '已满' : '在线';
-                const line = `${s.name}  | ${s.current_players}/${s.max_players} 玩家 | ${status}`;
+                const line = `${s.name}  | ${s.current_players}/${s.max_players} 玩家 | ${status} | ${formatMapDuration(this.mapStartedAtMap.get(`${s.address}:${s.port}`) ?? null)}`;
                 const lineWidth = calcCanvasTextWidth(line, 16) + 80;
                 if (lineWidth > this.maxRectWidth) {
                     this.maxRectWidth = lineWidth;
@@ -136,6 +140,12 @@ export class MapDetailCanvas extends BaseCanvas {
                     20 + nameWidth + playersWidth,
                     this.renderStartY,
                 );
+
+                const statusText = ` | ${status}`;
+                const statusWidth = context.measureText(statusText).width;
+                const durationText = ` | ${formatMapDuration(this.mapStartedAtMap.get(`${s.address}:${s.port}`) ?? null)}`;
+                context.fillStyle = '#6b7280';
+                context.fillText(durationText, 20 + nameWidth + playersWidth + statusWidth, this.renderStartY);
 
                 this.renderStartY += 40;
             }
