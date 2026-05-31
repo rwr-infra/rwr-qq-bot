@@ -6,6 +6,7 @@ import {
     getServerInfoDisplaySectionText,
     getCountColor,
     getPlayersInServer,
+    formatMapDuration,
 } from '../utils/utils';
 import { BaseCanvas } from '../../../services/baseCanvas';
 
@@ -14,12 +15,12 @@ const HISTORY_LINE_HEIGHT = 30;
 const HISTORY_SECTION_TITLE = '近5分钟离线服务器';
 
 export class PlayersCanvas extends BaseCanvas {
-    // constructor params
     serverList: OnlineServerItem[];
     historicalServers: HistoricalServerItem[];
     fileName: string;
     moderators: string[];
     moderatorBadge: string;
+    mapStartedAtMap: Map<string, number | null>;
 
     // render params data
     measureMaxWidth = 0;
@@ -44,6 +45,7 @@ export class PlayersCanvas extends BaseCanvas {
         serverList: OnlineServerItem[],
         historicalServers: HistoricalServerItem[],
         fileName: string,
+        mapStartedAtMap: Map<string, number | null> = new Map(),
         moderators?: string[],
         moderatorBadge?: string,
     ) {
@@ -51,6 +53,7 @@ export class PlayersCanvas extends BaseCanvas {
         this.serverList = serverList;
         this.historicalServers = historicalServers;
         this.fileName = fileName;
+        this.mapStartedAtMap = mapStartedAtMap;
         this.moderators = moderators ?? [];
         this.moderatorBadge = moderatorBadge ?? MODERATOR_BADGE_DEFAULT;
     }
@@ -86,9 +89,14 @@ export class PlayersCanvas extends BaseCanvas {
         this.maxLengthStr = '';
 
         this.serverList.forEach((s) => {
+            const serverKey = `${s.address}:${s.port}`;
+            const durationText = formatMapDuration(this.mapStartedAtMap.get(serverKey) ?? null);
             const sectionData = getServerInfoDisplaySectionText(s);
             const outputText =
-                sectionData.serverSection + sectionData.playersSection;
+                sectionData.serverSection +
+                sectionData.playersSection +
+                sectionData.mapSection +
+                ` ${durationText}`;
             if (outputText.length > this.maxLengthStr.length) {
                 this.maxLengthStr = outputText;
             }
@@ -172,16 +180,16 @@ export class PlayersCanvas extends BaseCanvas {
         this.maxRectWidth = 0;
         this.serverList.forEach((s) => {
             context.font = 'bold 20pt Consolas';
-            /**
-             * Render server info text
-             */
+
             context.fillStyle = '#fff';
+            const serverKey = `${s.address}:${s.port}`;
+            const durationText = formatMapDuration(this.mapStartedAtMap.get(serverKey) ?? null);
             const outputSectionText = getServerInfoDisplaySectionText(s);
-            // all text, update maxRectWidth
             const allText =
                 outputSectionText.serverSection +
                 outputSectionText.playersSection +
-                outputSectionText.mapSection;
+                outputSectionText.mapSection +
+                ` ${durationText}`;
             const allTextWidth = context.measureText(allText).width;
             if (allTextWidth > this.maxRectWidth) {
                 this.maxRectWidth = allTextWidth;
@@ -213,6 +221,18 @@ export class PlayersCanvas extends BaseCanvas {
             context.fillText(
                 outputSectionText.mapSection,
                 20 + serverSectionWidth + playersSectionWidth,
+                10 + this.renderStartY,
+            );
+            const mapSectionWidth = context.measureText(
+                outputSectionText.mapSection,
+            ).width;
+
+            // duration section
+            context.fillStyle = '#6b7280';
+            const spaceWidth = context.measureText(' ').width;
+            context.fillText(
+                durationText,
+                20 + serverSectionWidth + playersSectionWidth + mapSectionWidth + spaceWidth,
                 10 + this.renderStartY,
             );
 

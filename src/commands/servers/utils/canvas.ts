@@ -28,10 +28,12 @@ export const printServerListPng = (
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
+    const mapStartedAtMap = buildMapStartedAtMap(serverList);
     const outputPath = new ServersCanvas(
         serverList,
         historicalServers,
         fileName,
+        mapStartedAtMap,
     ).render();
 
     return outputPath;
@@ -55,10 +57,12 @@ export const printPlayersPng = (
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
+    const mapStartedAtMap = buildMapStartedAtMap(serverList);
     const outputPath = new PlayersCanvas(
         serverList,
         historicalServers,
         fileName,
+        mapStartedAtMap,
         moderators,
         moderatorBadge,
     ).render();

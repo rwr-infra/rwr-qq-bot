@@ -5,6 +5,7 @@ import {
     calcCanvasTextWidth,
     getServerInfoDisplaySectionText,
     getCountColor,
+    formatMapDuration,
 } from '../utils/utils';
 import { BaseCanvas } from '../../../services/baseCanvas';
 
@@ -15,6 +16,7 @@ export class ServersCanvas extends BaseCanvas {
     serverList: OnlineServerItem[];
     historicalServers: HistoricalServerItem[];
     fileName: string;
+    mapStartedAtMap: Map<string, number | null>;
 
     measureMaxWidth = 0;
     renderWidth = 0;
@@ -38,11 +40,13 @@ export class ServersCanvas extends BaseCanvas {
         serverList: OnlineServerItem[],
         historicalServers: HistoricalServerItem[],
         fileName: string,
+        mapStartedAtMap: Map<string, number | null> = new Map(),
     ) {
         super();
         this.serverList = serverList;
         this.historicalServers = historicalServers;
         this.fileName = fileName;
+        this.mapStartedAtMap = mapStartedAtMap;
     }
 
     measureTitle() {
@@ -64,9 +68,14 @@ export class ServersCanvas extends BaseCanvas {
         this.maxLengthStr = '';
         this.serverList.forEach((s) => {
             this.contentLines += 1;
+            const serverKey = `${s.address}:${s.port}`;
+            const durationText = formatMapDuration(this.mapStartedAtMap.get(serverKey) ?? null);
             const sectionData = getServerInfoDisplaySectionText(s);
             const outputText =
-                sectionData.serverSection + sectionData.playersSection;
+                sectionData.serverSection +
+                sectionData.playersSection +
+                sectionData.mapSection +
+                ` ${durationText}`;
             if (outputText.length > this.maxLengthStr.length) {
                 this.maxLengthStr = outputText;
             }
@@ -144,10 +153,13 @@ export class ServersCanvas extends BaseCanvas {
 
             context.fillStyle = '#fff';
             const outputSectionText = getServerInfoDisplaySectionText(s);
+            const serverKey = `${s.address}:${s.port}`;
+            const durationText = formatMapDuration(this.mapStartedAtMap.get(serverKey) ?? null);
             const allText =
                 outputSectionText.serverSection +
                 outputSectionText.playersSection +
-                outputSectionText.mapSection;
+                outputSectionText.mapSection +
+                ` ${durationText}`;
             const allTextWidth = context.measureText(allText).width;
             if (allTextWidth > this.maxRectWidth) {
                 this.maxRectWidth = allTextWidth;
@@ -176,6 +188,17 @@ export class ServersCanvas extends BaseCanvas {
             context.fillText(
                 outputSectionText.mapSection,
                 20 + serverSectionWidth + playersSectionWidth,
+                10 + this.renderStartY,
+            );
+            const mapSectionWidth = context.measureText(
+                outputSectionText.mapSection,
+            ).width;
+
+            context.fillStyle = '#6b7280';
+            const spaceWidth = context.measureText(' ').width;
+            context.fillText(
+                durationText,
+                20 + serverSectionWidth + playersSectionWidth + mapSectionWidth + spaceWidth,
                 10 + this.renderStartY,
             );
 
