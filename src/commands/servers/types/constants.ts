@@ -18,3 +18,5 @@ export const PLAYERS_OUTPUT_FILE = 'players.png';
 export const ANALYSIS_SERVER_OUTPUT_FILE = 'analysis_server.png';
 
 export const ANALYSIS_SERVER_DATA_FILE = 'analysis_server.json';
+
+export const SERVER_OVERVIEW_OUTPUT_FILE = 'server_overview.png';

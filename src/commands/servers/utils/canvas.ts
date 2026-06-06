@@ -2,6 +2,8 @@ import * as fs from 'fs';
 import {
     HistoricalServerItem,
     IMapDataItem,
+    IServerOverviewStats,
+    ITrendSummary,
     IUserMatchedServerItem,
     OnlineServerItem,
 } from '../types/types';
@@ -11,6 +13,7 @@ import { PlayersCanvas } from '../canvas/playersCanvas';
 import { WhereisCanvas } from '../canvas/whereisCanvas';
 import { MapsCanvas } from '../canvas/mapsCanvas';
 import { MapDetailCanvas } from '../canvas/mapDetailCanvas';
+import { ServerOverviewCanvas } from '../canvas/serverOverviewCanvas';
 
 const OUTPUT_FOLDER = 'out';
 
@@ -117,6 +120,36 @@ export const printMapPng = (
 
     const mapStartedAtMap = buildMapStartedAtMap(serverList);
     const outputPath = new MapsCanvas(serverList, mapData, fileName, mapStartedAtMap).render();
+
+    return outputPath;
+};
+
+/**
+ * Print server overview(status report) output png
+ * @param stats 实时快照聚合统计
+ * @param trend 历史趋势峰值摘要
+ * @param historicalServers 近期离线服务器
+ * @param fileName 输出文件名
+ */
+export const printServerOverviewPng = (
+    stats: IServerOverviewStats,
+    trend: ITrendSummary,
+    serverList: OnlineServerItem[],
+    latencyMap: Map<string, number | null>,
+    fileName: string,
+): string => {
+    if (!fs.existsSync(OUTPUT_FOLDER)) {
+        fs.mkdirSync(OUTPUT_FOLDER);
+    }
+
+    const mapStartedAtMap = buildMapStartedAtMap(serverList);
+    const outputPath = new ServerOverviewCanvas(
+        stats,
+        trend,
+        fileName,
+        mapStartedAtMap,
+        latencyMap,
+    ).render();
 
     return outputPath;
 };

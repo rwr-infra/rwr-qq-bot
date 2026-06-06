@@ -6,6 +6,7 @@ import {
     printMapDetailPng,
     printPlayersPng,
     printServerListPng,
+    printServerOverviewPng,
     printUserInServerListPng,
 } from './utils/canvas';
 import {
@@ -13,6 +14,7 @@ import {
     MAP_DETAIL_OUTPUT_FILE,
     PLAYERS_OUTPUT_FILE,
     SERVERS_OUTPUT_FILE,
+    SERVER_OVERVIEW_OUTPUT_FILE,
     WHEREIS_OUTPUT_FILE,
 } from './types/constants';
 import {
@@ -21,6 +23,8 @@ import {
     findMapByQuery,
     getServersForMap,
 } from './utils/utils';
+import { aggregateOverview, readTrendSummary } from './utils/overview';
+import { pingServers } from './utils/ping';
 import {
     printChartPng,
     printHoursChartPng,
@@ -515,3 +519,59 @@ export const ServerAnalyticsCommandRegister: IRegister = {
         AnalysticsServerTask.start(env);
     },
 };
+
+// ============================================================================
+// OVERVIEW COMMAND - 服务器状态总览(实时快照 + 历史趋势 一图概览)
+// ============================================================================
+export const ServerOverviewCommandRegister = createServerCommand(
+    {
+        name: 'overview',
+        alias: 'o',
+        hint: ['查询服务器状态总览(规模/占用/各服务器地图·Bots·运行时长/离线): #overview'],
+        description:
+            '查询服务器状态总览(实时规模、占用率、各服务器地图·Bots·运行时长、历史峰值、近期离线).[15s CD]',
+        timesInterval: 15,
+    },
+    async (ctx) => {
+        await executeSharedGroupCommand(ctx, {
+            command: 'overview',
+            params: {},
+            cdMs: 5000,
+            apiCall: async (): Promise<ApiResult> => {
+                const serverList = await queryAllServers(
+                    ctx.env.SERVERS_MATCH_REGEX,
+                );
+                const stats = aggregateOverview(serverList);
+                const trend = readTrendSummary();
+                const latencyMap = await pingServers(serverList);
+                printServerOverviewPng(
+                    stats,
+                    trend,
+                    serverList,
+                    latencyMap,
+                    SERVER_OVERVIEW_OUTPUT_FILE,
+                );
+                return {
+                    serverList,
+                    outputFile: SERVER_OVERVIEW_OUTPUT_FILE,
+                };
+            },
+            buildReply: async (apiResult) =>
+                generateServerReply(
+                    ctx,
+                    apiResult.serverList,
+                    apiResult.outputFile,
+                ),
+            firstRequesterMessage:
+                '正在生成状态总览(含服务器延迟检测), 请稍后...',
+            pendingMessage: '状态总览生成中，请稍后...',
+            failureMessage: '生成状态总览失败，请稍后重试',
+        });
+    },
+    async (env: GlobalEnv): Promise<void> => {
+        logger.info('ServerOverviewCommandRegister::init()');
+        // 历史峰值趋势依赖以下任务持续写入(均为幂等启动)
+        AnalysticsTask.start(env);
+        AnalysticsHoursTask.start(env);
+    },
+);
