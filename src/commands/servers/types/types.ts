@@ -74,3 +74,30 @@ export interface IMapImageConfigItem {
 export interface IMapImageConfigFile {
     images: IMapImageConfigItem[];
 }
+
+export interface ITrendSummary {
+    peak24h: number | null; // analysis_hours.json 最大值
+    peak7d: number | null; // analysis.json 最大值
+    latest: number | null; // 最近一条记录
+    series24h: IAnalysisData[]; // 近24小时逐时在线数序列(用于绘制趋势折线)
+}
+
+export interface IServerDetailItem {
+    name: string;
+    mapName: string;
+    players: number;
+    maxPlayers: number;
+    bots: number;
+    serverKey: string; // `${address}:${port}`, 用于查询地图运行时长
+}
+
+export interface IServerOverviewStats {
+    serverCount: number;
+    playersTotal: number;
+    capacityTotal: number;
+    occupancyRate: number; // 0-1
+    botsTotal: number;
+    fullCount: number; // current_players >= max_players
+    emptyCount: number; // current_players === 0
+    serverDetail: IServerDetailItem[]; // 各服务器详情, 按玩家数降序
+}

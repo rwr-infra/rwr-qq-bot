@@ -50,6 +50,37 @@
     -   参数 h: 查询近 24 小时的数据
 -   a: analytics 的别名
 
+## overview
+
+### 用途
+
+根据 SERVERS_MATCH_REGEX 筛选服务器, 生成一张卡片式三段布局的状态总览图片，与 `analytics`（时间序列折线图）形成差异化互补：
+
+-   段一·概览: 标题 + 4 张 KPI 卡片（在线服务器数 / 在线玩家·容量·占用率 / 总 Bots / 满员服务器）+ 近24小时在线趋势折线图（面积+折线+峰值点，右上标注 24h/7日峰值数字；数据缺失时自动隐藏）
+-   段二·服务器详情: 各服务器一行（斑马纹卡片）——服务器名、地图、玩家数（着色）、Bots 数、延迟（ICMP ping，着色：<80ms 绿 / <180ms 琥珀 / 更高红 / 超时灰）、地图时长
+-   段三·页脚: 渲染耗时与时间
+
+底色与 `servers`、`players` 一致（`#451a03`），可通过 `OUTPUT_BG_IMG` 叠加背景图层。
+
+### 数据来源
+
+-   实时快照: `queryAllServers`（聚合 KPI 与各服务器详情）
+-   服务器延迟: 对各服务器 `address` 并发 ICMP `ping`（逻辑参考 `check` 命令，见 `utils/ping.ts`）。需运行环境具备 `ping` 命令
+-   地图运行时长: `serverHistoryCache.getMapStartedAt` + `formatMapDuration`
+-   24小时 / 7日峰值趋势: 读取 `out/analysis_hours.json` / `out/analysis.json`（由 `AnalysticsHoursTask` / `AnalysticsTask` cron 写入）。文件缺失时趋势条自动隐藏
+
+> 该命令 `init()` 会幂等启动 `AnalysticsTask` / `AnalysticsHoursTask`，因此即便 `ACTIVE_COMMANDS` 未启用 `analytics`，总览仍能获得历史峰值趋势数据。
+
+### 环境变量
+
+-   SERVERS_MATCH_REGEX: 用于匹配服务器的正则表达式
+-   OUTPUT_BG_IMG: 将输出的图片添加背景图 layer 层, 位于底色上方
+
+### 注册的指令
+
+-   overview: 生成服务器状态总览图片.[15s CD]
+-   o: overview 的别名
+
 ## maps
 
 ### 用途
