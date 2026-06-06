@@ -29,7 +29,7 @@ const FOOTER_H = 40;
 
 // 配色(与 ServersCanvas/PlayersCanvas 家族一致: #451a03 暖棕底 + OUTPUT_BG_IMG 可叠加)
 const COLOR_BG = '#451a03';
-const COLOR_CARD = 'rgba(0, 0, 0, 0.28)'; // 半透明深色面板, 叠在底色或背景图上均协调
+const COLOR_CARD = 'rgba(0, 0, 0, 0.5)'; // 半透明深色面板, 叠在底色或背景图上均协调
 const COLOR_ACCENT = '#f48225';
 const COLOR_TEXT = '#f8fafc';
 const COLOR_MUTED = '#cbb8a3'; // 暖色调中性灰
@@ -173,6 +173,35 @@ export class ServerOverviewCanvas extends BaseCanvas {
             str = str.slice(0, -1);
         }
         return str + '…';
+    }
+
+    /**
+     * 在 maxWidth 内绘制完整文本; 若放不下则从 startSize 递减到 minSize 寻找合适字号,
+     * 仍放不下则以 minSize 绘制(不截断, 禁止换行)。
+     */
+    private drawFitText(
+        ctx: Canvas2DContext,
+        text: string,
+        x: number,
+        y: number,
+        maxWidth: number,
+        startSize: number,
+        minSize: number,
+        color: string,
+        align: 'left' | 'right' = 'left',
+    ) {
+        ctx.textAlign = align;
+        for (let size = startSize; size >= minSize; size--) {
+            ctx.font = buildCanvasFont(size);
+            if (ctx.measureText(text).width <= maxWidth) {
+                ctx.fillStyle = color;
+                ctx.fillText(text, x, y);
+                return;
+            }
+        }
+        ctx.font = buildCanvasFont(minSize);
+        ctx.fillStyle = color;
+        ctx.fillText(text, x, y);
     }
 
     // ------------------------------------------------------------------
@@ -495,10 +524,10 @@ export class ServerOverviewCanvas extends BaseCanvas {
         const latencyRight = PAD + 700;
         const durationRight = WIDTH - PAD;
 
-        // 列标题
+        // 列标题 (醒目 + 具有标识性)
         ctx.textBaseline = 'middle';
-        ctx.font = buildCanvasFont(11, 'normal');
-        ctx.fillStyle = COLOR_MUTED;
+        ctx.font = buildCanvasFont(11);
+        ctx.fillStyle = COLOR_VALUE;
         const headMidY = y + DETAIL_COL_HEADER_H / 2;
         ctx.textAlign = 'left';
         ctx.fillText('服务器', nameX, headMidY);
@@ -531,17 +560,21 @@ export class ServerOverviewCanvas extends BaseCanvas {
 
             ctx.textBaseline = 'middle';
 
-            ctx.textAlign = 'left';
-            ctx.font = buildCanvasFont(13);
-            ctx.fillStyle = COLOR_TEXT;
-            ctx.fillText(
-                this.truncate(ctx, d.name, mapX - nameX - 14),
+            // 服务器名称保持全名, 字号自适应(禁止截断/换行)
+            this.drawFitText(
+                ctx,
+                d.name,
                 nameX,
                 midY,
+                mapX - nameX - 14,
+                13,
+                9,
+                COLOR_TEXT,
+                'left',
             );
 
             ctx.font = buildCanvasFont(12, 'normal');
-            ctx.fillStyle = COLOR_MUTED;
+            ctx.fillStyle = COLOR_ACCENT;
             ctx.fillText(
                 this.truncate(ctx, d.mapName, playersRight - mapX - 60),
                 mapX,
@@ -568,7 +601,7 @@ export class ServerOverviewCanvas extends BaseCanvas {
             const durationText = formatMapDuration(
                 this.mapStartedAtMap.get(d.serverKey) ?? null,
             );
-            ctx.fillStyle = COLOR_MUTED;
+            ctx.fillStyle = '#67e8f9';
             ctx.fillText(durationText, durationRight, midY);
         });
 
