@@ -1,0 +1,58 @@
+{
+    "serverList": [
+        {
+            "name": "Alpha Squad",
+            "address": "10.0.0.1",
+            "port": 1234,
+            "map_id": "maps/island",
+            "current_players": 5,
+            "max_players": 16,
+            "player": ["Alice", "Bob", "Carol", "Dave", "Eve"]
+        },
+        {
+            "name": "Bravo Base (empty)",
+            "address": "10.0.0.2",
+            "port": 1234,
+            "map_id": "maps/desert",
+            "current_players": 0,
+            "max_players": 16,
+            "player": []
+        },
+        {
+            "name": "Charlie Camp",
+            "address": "10.0.0.3",
+            "port": 1234,
+            "map_id": "maps/forest",
+            "current_players": 12,
+            "max_players": 16,
+            "player": [
+                "PlayerOne",
+                "PlayerTwo",
+                "PlayerThree",
+                "PlayerFour",
+                "PlayerFive",
+                "PlayerSix",
+                "PlayerSeven",
+                "PlayerEight",
+                "PlayerNine",
+                "PlayerTen",
+                "PlayerEleven",
+                "PlayerTwelve"
+            ]
+        }
+    ],
+    "historicalServers": [
+        {
+            "name": "Delta Down",
+            "address": "10.0.0.4",
+            "port": 1234,
+            "map_id": "maps/snow",
+            "current_players": 0,
+            "max_players": 16,
+            "player": [],
+            "lastSeenAt": 0
+        }
+    ],
+    "moderators": ["Bob", "Alice"],
+    "moderatorBadge": "⭐"
+}

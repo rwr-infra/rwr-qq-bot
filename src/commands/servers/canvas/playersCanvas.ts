@@ -1,19 +1,75 @@
 import { createCanvas, Canvas2DContext } from '../../../services/canvasBackend';
 import { HistoricalServerItem, OnlineServerItem } from '../types/types';
 import {
-    getServersHeaderDisplaySectionText,
-    calcCanvasTextWidth,
     getServerInfoDisplaySectionText,
     getCountColor,
     getPlayersInServer,
     formatMapDuration,
 } from '../utils/utils';
 import { BaseCanvas } from '../../../services/baseCanvas';
+import { buildCanvasFont } from '../../../services/canvasFonts';
+import {
+    roundRectPath,
+    drawSegments,
+    measureSegmentsWidth,
+    layoutChips,
+    ChipLayout,
+    ChipItem,
+    TextSegment,
+    CHIP_FONT_PT,
+    CHIP_PAD_X,
+    CHIP_H,
+    CHIP_GAP_X,
+    CHIP_GAP_Y,
+} from '../../../services/canvasHelpers';
 
 const MODERATOR_BADGE_DEFAULT = '⭐';
-const HISTORY_LINE_HEIGHT = 30;
-const HISTORY_SECTION_TITLE = '近5分钟离线服务器';
 
+// ============================================================================
+// 布局常量(沿用 ServerOverviewCanvas 的视觉节奏)
+// ============================================================================
+const PAD = 30;
+const TITLE_H = 56;
+const SECTION_GAP = 18;
+
+const CARD_GAP = 14; // 在线服务器卡片之间的垂直间距
+const CARD_PAD_X = 16;
+const CARD_PAD_TOP = 14;
+const CARD_PAD_BOTTOM = 14;
+const CARD_RADIUS = 12;
+const HEADER_H = 30; // 卡片头部行高(服务器名行)
+const HEADER_TO_CHIP_GAP = 10;
+const EMPTY_PLACEHOLDER_H = CHIP_H; // 0 玩家时占位行高
+
+const SECTION_HEADER_H = 40;
+const OFFLINE_ROW_H = 28;
+
+const FOOTER_H = 40;
+
+const WRAP_W_MIN = 360; // chip 区目标换行宽下限
+const WRAP_W_MAX = 760; // chip 区目标换行宽上限(控制图片不要过宽)
+
+// 配色(与 ServerOverviewCanvas / 家族一致)
+const COLOR_BG = '#451a03';
+const COLOR_CARD = 'rgba(0, 0, 0, 0.5)';
+const COLOR_ACCENT = '#f48225';
+const COLOR_TEXT = '#f8fafc';
+const COLOR_MUTED = '#cbb8a3';
+const COLOR_VALUE = '#fcd34d';
+
+// chip 配色
+const CHIP_BG_NORMAL = 'rgba(255, 255, 255, 0.08)';
+const CHIP_BG_MODERATOR = 'rgba(244, 130, 37, 0.22)';
+
+const TITLE_TEXT = '在线玩家分布';
+const HISTORY_SECTION_TITLE = '近5分钟离线服务器';
+const TITLE_GAP = 40; // 标题左侧文字与右侧统计之间的最小间距
+
+/**
+ * 玩家分布画布 — 卡片式布局(与 ServerOverviewCanvas 设计语言一致):
+ *   标题 + 每个在线服务器一张圆角卡片(头部信息 + 玩家 chip 流式排布) + 近期离线区块 + 页脚
+ * 画布宽度按内容自适应。
+ */
 export class PlayersCanvas extends BaseCanvas {
     serverList: OnlineServerItem[];
     historicalServers: HistoricalServerItem[];
@@ -23,23 +79,10 @@ export class PlayersCanvas extends BaseCanvas {
     mapStartedAtMap: Map<string, number | null>;
 
     // render params data
-    measureMaxWidth = 0;
     renderWidth = 0;
     renderHeight = 0;
-
-    titleData: ReturnType<typeof getServersHeaderDisplaySectionText> = {
-        serversTotalSection: '',
-        playersTotalStaticSection: '',
-        playersCountSection: '',
-    };
-    totalTitle = '';
-
-    maxLengthStr = '';
-    renderStartY = 0;
-    maxRectWidth = 0;
-    contentLines = 0;
-
-    totalFooter = '';
+    targetWrapW = WRAP_W_MIN;
+    serverLayouts: ChipLayout[] = [];
 
     constructor(
         serverList: OnlineServerItem[],
@@ -70,301 +113,371 @@ export class PlayersCanvas extends BaseCanvas {
             : playerName;
     }
 
-    measureTitle() {
-        const titleData = getServersHeaderDisplaySectionText(this.serverList);
-        this.titleData = titleData;
-
-        this.totalTitle =
-            titleData.serversTotalSection +
-            titleData.playersTotalStaticSection +
-            titleData.playersCountSection;
-
-        const titleWidth = calcCanvasTextWidth(this.totalTitle, 20) + 20;
-        if (titleWidth > this.measureMaxWidth) {
-            this.measureMaxWidth = titleWidth;
-        }
+    private chipItemsOf(server: OnlineServerItem): ChipItem[] {
+        return getPlayersInServer(server).map((name) => ({
+            displayName: this.getPlayerDisplayName(name),
+            isModerator: this.isModerator(name),
+        }));
     }
 
-    measureList() {
-        this.maxLengthStr = '';
+    private serverKey(server: OnlineServerItem): string {
+        return `${server.address}:${server.port}`;
+    }
 
+    /** 组装卡片头部分段(服务器名 + 人数 + 地图 + 时长) */
+    private buildHeaderSegments(server: OnlineServerItem): TextSegment[] {
+        const sec = getServerInfoDisplaySectionText(server);
+        const duration = formatMapDuration(
+            this.mapStartedAtMap.get(this.serverKey(server)) ?? null,
+        );
+        return [
+            {
+                text: sec.serverSection,
+                color: COLOR_TEXT,
+                font: buildCanvasFont(15),
+            },
+            {
+                text: sec.playersSection,
+                color: getCountColor(
+                    server.current_players,
+                    server.max_players,
+                ),
+                font: buildCanvasFont(15),
+            },
+            {
+                text: sec.mapSection,
+                color: COLOR_ACCENT,
+                font: buildCanvasFont(13),
+            },
+            {
+                text: ` ${duration}`,
+                color: COLOR_MUTED,
+                font: buildCanvasFont(12),
+            },
+        ];
+    }
+
+    /** 组装离线服务器行的分段(弱化配色) */
+    private buildOfflineSegments(server: HistoricalServerItem): TextSegment[] {
+        const sec = getServerInfoDisplaySectionText(server);
+        const elapsedMin = Math.ceil((Date.now() - server.lastSeenAt) / 60000);
+        return [
+            {
+                text: sec.serverSection,
+                color: COLOR_MUTED,
+                font: buildCanvasFont(12, 'normal'),
+            },
+            {
+                text: sec.playersSection,
+                color: COLOR_MUTED,
+                font: buildCanvasFont(12, 'normal'),
+            },
+            {
+                text: sec.mapSection,
+                color: 'rgba(203, 184, 163, 0.7)',
+                font: buildCanvasFont(11, 'normal'),
+            },
+            {
+                text: `  ${elapsedMin}分钟前`,
+                color: 'rgba(203, 184, 163, 0.6)',
+                font: buildCanvasFont(11, 'normal'),
+            },
+        ];
+    }
+
+    /** 标题右侧的概览统计分段 */
+    private buildTitleStatSegments(): TextSegment[] {
+        const totalPlayers = this.serverList.reduce(
+            (acc, s) => acc + s.current_players,
+            0,
+        );
+        const totalCapacity = this.serverList.reduce(
+            (acc, s) => acc + s.max_players,
+            0,
+        );
+        const labelFont = buildCanvasFont(13, 'normal');
+        const valueFont = buildCanvasFont(13);
+        return [
+            {
+                text: `${this.serverList.length}`,
+                color: COLOR_TEXT,
+                font: valueFont,
+            },
+            { text: ' 服务器  ·  ', color: COLOR_MUTED, font: labelFont },
+            {
+                text: `${totalPlayers}`,
+                color: getCountColor(totalPlayers, totalCapacity),
+                font: valueFont,
+            },
+            { text: ' 玩家在线', color: COLOR_MUTED, font: labelFont },
+        ];
+    }
+
+    /** 单张卡片高度 */
+    private cardHeight(layout: ChipLayout): number {
+        const chipAreaH =
+            layout.rows > 0 ? layout.chipAreaH : EMPTY_PLACEHOLDER_H;
+        return (
+            CARD_PAD_TOP +
+            HEADER_H +
+            HEADER_TO_CHIP_GAP +
+            chipAreaH +
+            CARD_PAD_BOTTOM
+        );
+    }
+
+    /**
+     * 测量阶段: 确定唯一的目标换行宽, 缓存各服务器 chip 布局, 计算画布宽高。
+     * measure 与 render 复用同一 layout 缓存, 保证两遍布局逐 chip 一致。
+     */
+    private prepare() {
+        const tmp = createCanvas(1, 1);
+        const ctx = tmp.getContext('2d');
+
+        // (1) 头行最大宽
+        let headerMaxW = 0;
         this.serverList.forEach((s) => {
-            const serverKey = `${s.address}:${s.port}`;
-            const durationText = formatMapDuration(this.mapStartedAtMap.get(serverKey) ?? null);
-            const sectionData = getServerInfoDisplaySectionText(s);
-            const outputText =
-                sectionData.serverSection +
-                sectionData.playersSection +
-                sectionData.mapSection +
-                ` ${durationText}`;
-            if (outputText.length > this.maxLengthStr.length) {
-                this.maxLengthStr = outputText;
-            }
-            this.contentLines += 1;
+            headerMaxW = Math.max(
+                headerMaxW,
+                measureSegmentsWidth(ctx, this.buildHeaderSegments(s)),
+            );
+        });
 
-            // Players max width
-            getPlayersInServer(s).forEach((p) => {
-                this.contentLines += 1;
-                const displayName = this.getPlayerDisplayName(p);
-                if (displayName.length > this.maxLengthStr.length) {
-                    this.maxLengthStr = displayName;
-                }
+        // (2) 单 chip 最大宽(保证最宽 chip 放得下)
+        ctx.font = buildCanvasFont(CHIP_FONT_PT);
+        let chipMaxSingle = 0;
+        this.serverList.forEach((s) => {
+            this.chipItemsOf(s).forEach((it) => {
+                const w = ctx.measureText(it.displayName).width + CHIP_PAD_X * 2;
+                chipMaxSingle = Math.max(chipMaxSingle, w);
             });
         });
 
-        let historicalHeight = 0;
+        // (3) 目标换行宽
+        this.targetWrapW = Math.max(
+            Math.min(Math.max(headerMaxW, WRAP_W_MIN), WRAP_W_MAX),
+            chipMaxSingle,
+        );
+
+        // (4) 每服务器 wrap 并缓存
+        this.serverLayouts = this.serverList.map((s) =>
+            layoutChips(ctx, this.chipItemsOf(s), this.targetWrapW),
+        );
+        const maxChipLineW = this.serverLayouts.reduce(
+            (m, l) => Math.max(m, l.maxLineWidth),
+            0,
+        );
+
+        // (5) 估算 footer 宽(renderFooter 写入 this.totalFooter; 禁用时为空)
+        this.renderFooter(ctx);
+        ctx.font = buildCanvasFont(10);
+        const footerW = this.totalFooter
+            ? ctx.measureText(this.totalFooter).width
+            : 0;
+
+        // (6) 标题宽 / 离线区块宽
+        const titleStatW = measureSegmentsWidth(
+            ctx,
+            this.buildTitleStatSegments(),
+        );
+        ctx.font = buildCanvasFont(24);
+        const titleLeftW = ctx.measureText(TITLE_TEXT).width;
+        const titleW = titleLeftW + TITLE_GAP + titleStatW;
+
+        let offlineW = 0;
         if (this.historicalServers.length > 0) {
-            historicalHeight =
-                40 + HISTORY_LINE_HEIGHT * this.historicalServers.length + 10;
+            ctx.font = buildCanvasFont(16);
+            offlineW = ctx.measureText(HISTORY_SECTION_TITLE).width + 14;
             this.historicalServers.forEach((s) => {
-                const sectionData = getServerInfoDisplaySectionText(s);
-                const outputText =
-                    sectionData.serverSection +
-                    sectionData.playersSection +
-                    sectionData.mapSection;
-                if (outputText.length > this.maxLengthStr.length) {
-                    this.maxLengthStr = outputText;
-                }
+                offlineW = Math.max(
+                    offlineW,
+                    measureSegmentsWidth(ctx, this.buildOfflineSegments(s)),
+                );
             });
         }
 
-        this.renderHeight = 120 + this.contentLines * 40 + historicalHeight;
+        // (7) 整图宽高
+        this.renderWidth = Math.ceil(
+            Math.max(
+                PAD * 2 + titleW,
+                PAD * 2 + Math.max(headerMaxW, maxChipLineW) + CARD_PAD_X * 2,
+                PAD * 2 + offlineW,
+                20 + footerW,
+            ),
+        );
+        this.renderHeight = this.computeHeight();
     }
 
-    renderLayout(context: Canvas2DContext, width: number, height: number) {
-        context.fillStyle = '#451a03';
-        context.fillRect(0, 0, width, height);
+    private computeHeight(): number {
+        let h = PAD + TITLE_H;
+
+        this.serverLayouts.forEach((layout, i) => {
+            h += this.cardHeight(layout);
+            if (i < this.serverLayouts.length - 1) {
+                h += CARD_GAP;
+            }
+        });
+
+        if (this.serverList.length > 0) {
+            h += SECTION_GAP;
+        }
+
+        if (this.historicalServers.length > 0) {
+            h +=
+                SECTION_HEADER_H +
+                this.historicalServers.length * OFFLINE_ROW_H +
+                SECTION_GAP;
+        }
+
+        h += FOOTER_H;
+        return Math.ceil(h);
     }
 
-    renderTitle(context: Canvas2DContext) {
-        context.font = 'bold 20pt Consolas';
-        context.textAlign = 'left';
-        context.textBaseline = 'top';
-        context.fillStyle = '#fff';
-        context.fillText(
-            this.titleData.serversTotalSection +
-                this.titleData.playersTotalStaticSection,
-            10,
-            10,
-        );
+    private renderTitle(ctx: Canvas2DContext, y: number): number {
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = COLOR_TEXT;
+        ctx.font = buildCanvasFont(24);
+        ctx.fillText(TITLE_TEXT, PAD, y);
 
-        const titleStaticSectionWidth = context.measureText(
-            this.titleData.serversTotalSection +
-                this.titleData.playersTotalStaticSection,
-        ).width;
-        // count
-        const allServersCapacity = this.serverList.reduce(
-            (acc, cur) => acc + cur.max_players,
-            0,
+        drawSegments(
+            ctx,
+            this.renderWidth - PAD,
+            y + 10,
+            this.buildTitleStatSegments(),
+            'right',
         );
-        const allPlayersCount = this.serverList.reduce(
-            (acc, cur) => acc + cur.current_players,
-            0,
-        );
-        context.fillStyle = getCountColor(allPlayersCount, allServersCapacity);
-        context.fillText(
-            this.titleData.playersCountSection,
-            10 + titleStaticSectionWidth,
-            10,
-        );
+        ctx.textAlign = 'left';
 
-        this.renderStartY = 10 + 40 + 10;
+        return y + TITLE_H;
     }
 
-    renderList(context: Canvas2DContext) {
-        context.font = 'bold 20pt Consolas';
-        context.textAlign = 'left';
-        context.textBaseline = 'top';
-        context.fillStyle = '#3574d4';
+    private renderServerCards(ctx: Canvas2DContext, y: number): number {
+        const cardX = PAD;
+        const cardW = this.renderWidth - PAD * 2;
 
-        this.maxRectWidth = 0;
-        this.serverList.forEach((s) => {
-            context.font = 'bold 20pt Consolas';
+        this.serverList.forEach((server, i) => {
+            const layout = this.serverLayouts[i];
+            const cardH = this.cardHeight(layout);
 
-            context.fillStyle = '#fff';
-            const serverKey = `${s.address}:${s.port}`;
-            const durationText = formatMapDuration(this.mapStartedAtMap.get(serverKey) ?? null);
-            const outputSectionText = getServerInfoDisplaySectionText(s);
-            const allText =
-                outputSectionText.serverSection +
-                outputSectionText.playersSection +
-                outputSectionText.mapSection +
-                ` ${durationText}`;
-            const allTextWidth = context.measureText(allText).width;
-            if (allTextWidth > this.maxRectWidth) {
-                this.maxRectWidth = allTextWidth;
+            // 卡片背景
+            ctx.fillStyle = COLOR_CARD;
+            roundRectPath(ctx, cardX, y, cardW, cardH, CARD_RADIUS);
+            ctx.fill();
+
+            // 头部信息行
+            ctx.textBaseline = 'middle';
+            drawSegments(
+                ctx,
+                cardX + CARD_PAD_X,
+                y + CARD_PAD_TOP + HEADER_H / 2,
+                this.buildHeaderSegments(server),
+                'left',
+            );
+
+            // chip 区
+            const chipX0 = cardX + CARD_PAD_X;
+            const chipY0 = y + CARD_PAD_TOP + HEADER_H + HEADER_TO_CHIP_GAP;
+
+            if (layout.rows === 0) {
+                ctx.font = buildCanvasFont(12, 'normal');
+                ctx.fillStyle = COLOR_MUTED;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('暂无玩家', chipX0, chipY0 + CHIP_H / 2);
+            } else {
+                layout.lines.forEach((line, rowIdx) => {
+                    const rowY = chipY0 + rowIdx * (CHIP_H + CHIP_GAP_Y);
+                    let cx = chipX0;
+                    line.chips.forEach((chip) => {
+                        ctx.fillStyle = chip.isModerator
+                            ? CHIP_BG_MODERATOR
+                            : CHIP_BG_NORMAL;
+                        roundRectPath(ctx, cx, rowY, chip.w, CHIP_H, CHIP_H / 2);
+                        ctx.fill();
+
+                        ctx.font = buildCanvasFont(CHIP_FONT_PT);
+                        ctx.fillStyle = chip.isModerator
+                            ? COLOR_VALUE
+                            : COLOR_TEXT;
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(
+                            chip.text,
+                            cx + CHIP_PAD_X,
+                            rowY + CHIP_H / 2,
+                        );
+
+                        cx += chip.w + CHIP_GAP_X;
+                    });
+                });
             }
 
-            // server section
-            context.fillText(
-                outputSectionText.serverSection,
-                20,
-                10 + this.renderStartY,
-            );
-            const serverSectionWidth = context.measureText(
-                outputSectionText.serverSection,
-            ).width;
-
-            // count section
-            context.fillStyle = getCountColor(s.current_players, s.max_players);
-            context.fillText(
-                outputSectionText.playersSection,
-                20 + serverSectionWidth,
-                10 + this.renderStartY,
-            );
-            const playersSectionWidth = context.measureText(
-                outputSectionText.playersSection,
-            ).width;
-
-            // map section
-            context.fillStyle = '#fff';
-            context.fillText(
-                outputSectionText.mapSection,
-                20 + serverSectionWidth + playersSectionWidth,
-                10 + this.renderStartY,
-            );
-            const mapSectionWidth = context.measureText(
-                outputSectionText.mapSection,
-            ).width;
-
-            // duration section
-            context.fillStyle = '#6b7280';
-            const spaceWidth = context.measureText(' ').width;
-            context.fillText(
-                durationText,
-                20 + serverSectionWidth + playersSectionWidth + mapSectionWidth + spaceWidth,
-                10 + this.renderStartY,
-            );
-
-            // render players
-            context.font = 'bold 16pt Consolas';
-            context.fillStyle = '#a5f3fc';
-            getPlayersInServer(s).forEach((p) => {
-                const displayName = this.getPlayerDisplayName(p);
-                const textWidth = context.measureText(displayName).width;
-                if (textWidth > this.maxRectWidth) {
-                    this.maxRectWidth = textWidth;
-                }
-                context.fillText(displayName, 20, 10 + this.renderStartY + 40);
-                this.renderStartY += 40;
-            });
-
-            this.renderStartY += 40;
+            y += cardH;
+            if (i < this.serverList.length - 1) {
+                y += CARD_GAP;
+            }
         });
+
+        if (this.serverList.length > 0) {
+            y += SECTION_GAP;
+        }
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+        return y;
     }
 
-    renderHistoricalList(context: Canvas2DContext) {
+    private renderOfflineSection(ctx: Canvas2DContext, y: number): number {
         if (this.historicalServers.length === 0) {
-            return;
+            return y;
         }
 
-        this.renderStartY += 15;
+        // 分段标题(accent 竖条 + 标题)
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = COLOR_ACCENT;
+        ctx.fillRect(PAD, y + 2, 4, 20);
+        ctx.font = buildCanvasFont(16);
+        ctx.fillStyle = COLOR_TEXT;
+        ctx.fillText(HISTORY_SECTION_TITLE, PAD + 14, y);
+        y += SECTION_HEADER_H;
 
-        context.font = 'bold 14pt Consolas';
-        context.textAlign = 'left';
-        context.textBaseline = 'top';
-        context.fillStyle = '#9ca3af';
-        context.fillText(HISTORY_SECTION_TITLE, 20, 10 + this.renderStartY);
-
-        this.renderStartY += 40;
-
-        context.font = '16pt Consolas';
-
-        this.historicalServers.forEach((s) => {
-            const sectionData = getServerInfoDisplaySectionText(s);
-
-            context.fillStyle = '#6b7280';
-            context.fillText(
-                sectionData.serverSection,
-                20,
-                10 + this.renderStartY,
+        this.historicalServers.forEach((server) => {
+            const midY = y + OFFLINE_ROW_H / 2;
+            ctx.textBaseline = 'middle';
+            drawSegments(
+                ctx,
+                PAD,
+                midY,
+                this.buildOfflineSegments(server),
+                'left',
             );
-            const serverSectionWidth = context.measureText(
-                sectionData.serverSection,
-            ).width;
-
-            context.fillStyle = '#9ca3af';
-            context.fillText(
-                sectionData.playersSection,
-                20 + serverSectionWidth,
-                10 + this.renderStartY,
-            );
-            const playersSectionWidth = context.measureText(
-                sectionData.playersSection,
-            ).width;
-
-            context.fillStyle = '#6b7280';
-            context.fillText(
-                sectionData.mapSection,
-                20 + serverSectionWidth + playersSectionWidth,
-                10 + this.renderStartY,
-            );
-            const mapSectionWidth = context.measureText(
-                sectionData.mapSection,
-            ).width;
-
-            const elapsedMin = Math.ceil((Date.now() - s.lastSeenAt) / 60000);
-            context.fillStyle = '#9ca3af';
-            context.font = '12pt Consolas';
-            // Vertically center 12pt text within the 16pt line
-            const yOffset = 8 / 3;
-            const spaceWidth = context.measureText(' ').width;
-            context.fillText(
-                `${elapsedMin}分钟前`,
-                20 + serverSectionWidth + playersSectionWidth + mapSectionWidth + spaceWidth,
-                10 + this.renderStartY + yOffset,
-            );
-
-            context.font = '16pt Consolas';
-            this.renderStartY += HISTORY_LINE_HEIGHT;
+            y += OFFLINE_ROW_H;
         });
-    }
 
-    renderRect(context: Canvas2DContext) {
-        context.strokeStyle = '#f48225';
-        context.rect(
-            10,
-            this.renderStartY + 10,
-            this.maxRectWidth + 20,
-            this.contentLines * 40 + 10,
-        );
-        context.stroke();
-        this.renderStartY += 10;
-    }
-
-    measureRender() {
-        this.measureTitle();
-        this.measureList();
-
-        const canvas = createCanvas(this.measureMaxWidth, this.renderHeight);
-        const context = canvas.getContext('2d');
-
-        this.renderTitle(context);
-        // 加上两端间距
-        const titleWidth = context.measureText(this.totalTitle).width + 30;
-        this.renderList(context);
-        const listWidth = this.maxRectWidth + 40;
-        this.renderHistoricalList(context);
-        this.renderFooter(context);
-        const footerWidth = context.measureText(this.totalFooter).width + 30;
-
-        this.renderWidth = Math.max(titleWidth, listWidth, footerWidth);
+        y += SECTION_GAP;
+        ctx.textBaseline = 'top';
+        return y;
     }
 
     render() {
         this.record();
-        this.measureRender();
+        this.prepare();
 
         const canvas = createCanvas(this.renderWidth, this.renderHeight);
-        const context = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d');
 
-        this.renderLayout(context, this.renderWidth, this.renderHeight);
-        this.renderBgImg(context, this.renderWidth, this.renderHeight);
-        this.renderTitle(context);
-        this.renderRect(context);
-        this.renderList(context);
-        this.renderHistoricalList(context);
-        this.renderFooter(context);
+        ctx.fillStyle = COLOR_BG;
+        ctx.fillRect(0, 0, this.renderWidth, this.renderHeight);
+        this.renderBgImg(ctx, this.renderWidth, this.renderHeight);
+
+        let y = PAD;
+        y = this.renderTitle(ctx, y);
+        y = this.renderServerCards(ctx, y);
+        y = this.renderOfflineSection(ctx, y);
+
+        this.renderStartY = y;
+        this.renderFooter(ctx);
 
         return super.writeFile(canvas, this.fileName);
     }

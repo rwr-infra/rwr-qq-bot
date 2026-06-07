@@ -137,6 +137,7 @@ export const printServerOverviewPng = (
     serverList: OnlineServerItem[],
     latencyMap: Map<string, number | null>,
     fileName: string,
+    historicalServers: HistoricalServerItem[] = [],
 ): string => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
@@ -149,6 +150,7 @@ export const printServerOverviewPng = (
         fileName,
         mapStartedAtMap,
         latencyMap,
+        historicalServers,
     ).render();
 
     return outputPath;
