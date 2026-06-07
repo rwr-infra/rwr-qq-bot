@@ -60,6 +60,8 @@ const COLOR_VALUE = '#fcd34d';
 // chip 配色
 const CHIP_BG_NORMAL = 'rgba(255, 255, 255, 0.08)';
 const CHIP_BG_MODERATOR = 'rgba(244, 130, 37, 0.22)';
+const CHIP_TEXT_NORMAL = '#a5f3fc'; // 普通玩家文本(沿用旧版青色)
+const MAP_TEXT_COLOR = '#fff'; // 地图文本(沿用旧版白色)
 
 const TITLE_TEXT = '在线玩家分布';
 const HISTORY_SECTION_TITLE = '近5分钟离线服务器';
@@ -146,7 +148,7 @@ export class PlayersCanvas extends BaseCanvas {
             },
             {
                 text: sec.mapSection,
-                color: COLOR_ACCENT,
+                color: MAP_TEXT_COLOR,
                 font: buildCanvasFont(13),
             },
             {
@@ -399,7 +401,7 @@ export class PlayersCanvas extends BaseCanvas {
                         ctx.font = buildCanvasFont(CHIP_FONT_PT);
                         ctx.fillStyle = chip.isModerator
                             ? COLOR_VALUE
-                            : COLOR_TEXT;
+                            : CHIP_TEXT_NORMAL;
                         ctx.textAlign = 'left';
                         ctx.textBaseline = 'middle';
                         ctx.fillText(
