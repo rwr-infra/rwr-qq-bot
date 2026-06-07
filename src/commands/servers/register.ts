@@ -541,6 +541,8 @@ export const ServerOverviewCommandRegister = createServerCommand(
                 const serverList = await queryAllServers(
                     ctx.env.SERVERS_MATCH_REGEX,
                 );
+                const historicalServers =
+                    serverHistoryCache.getDisappearedServers(serverList);
                 const stats = aggregateOverview(serverList);
                 const trend = readTrendSummary();
                 const latencyMap = await pingServers(serverList);
@@ -550,6 +552,7 @@ export const ServerOverviewCommandRegister = createServerCommand(
                     serverList,
                     latencyMap,
                     SERVER_OVERVIEW_OUTPUT_FILE,
+                    historicalServers,
                 );
                 return {
                     serverList,

@@ -4,6 +4,9 @@ import { createCanvas, toPngBuffer } from '../canvasBackend';
 
 import { TDoll2Canvas } from '../../commands/tdoll/canvas/tdoll2Canvas';
 import { MapsCanvas } from '../../commands/servers/canvas/mapsCanvas';
+import { PlayersCanvas } from '../../commands/servers/canvas/playersCanvas';
+import { ServerOverviewCanvas } from '../../commands/servers/canvas/serverOverviewCanvas';
+import { aggregateOverview } from '../../commands/servers/utils/overview';
 import { printChartPng } from '../../commands/servers/charts/chart';
 import {
     ANALYSIS_DATA_FILE,
@@ -78,6 +81,58 @@ export const scenarios: ImageScenario[] = [
             const { servers, maps } = readJson<any>('servers/maps.json');
 
             const canvas = new MapsCanvas(servers, maps, fileName);
+            const outPath = canvas.render();
+            return path.resolve(outPath);
+        },
+    },
+    {
+        id: 'players-basic',
+        name: 'Players basic render',
+        run: async () => {
+            ensureOutDir();
+            const fileName = `reg-players-${Date.now()}.png`;
+
+            const data = readJson<any>('servers/players.json');
+
+            // 让「X分钟前」可复现: 用相对当前时刻的固定偏移(90s → 恒为 2 分钟前)
+            const historicalServers = (data.historicalServers ?? []).map(
+                (s: any) => ({ ...s, lastSeenAt: Date.now() - 90_000 }),
+            );
+
+            const canvas = new PlayersCanvas(
+                data.serverList,
+                historicalServers,
+                fileName,
+                new Map(),
+                data.moderators,
+                data.moderatorBadge,
+            );
+            const outPath = canvas.render();
+            return path.resolve(outPath);
+        },
+    },
+    {
+        id: 'servers-overview-basic',
+        name: 'Server overview basic render',
+        run: async () => {
+            ensureOutDir();
+            const fileName = `reg-overview-${Date.now()}.png`;
+
+            const data = readJson<any>('servers/overview.json');
+            const stats = aggregateOverview(data.serverList);
+            const latencyMap = new Map<string, number | null>(data.latencyMap);
+            const historicalServers = (data.historicalServers ?? []).map(
+                (s: any) => ({ ...s, lastSeenAt: Date.now() - 90_000 }),
+            );
+
+            const canvas = new ServerOverviewCanvas(
+                stats,
+                data.trend,
+                fileName,
+                new Map(),
+                latencyMap,
+                historicalServers,
+            );
             const outPath = canvas.render();
             return path.resolve(outPath);
         },

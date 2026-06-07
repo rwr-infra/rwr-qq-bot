@@ -1,0 +1,65 @@
+{
+    "serverList": [
+        {
+            "name": "Alpha Squad",
+            "address": "10.0.0.1",
+            "port": 1234,
+            "map_id": "maps/island",
+            "current_players": 16,
+            "max_players": 16,
+            "bots": 8,
+            "player": []
+        },
+        {
+            "name": "Bravo Base",
+            "address": "10.0.0.2",
+            "port": 1234,
+            "map_id": "maps/desert",
+            "current_players": 7,
+            "max_players": 16,
+            "bots": 4,
+            "player": []
+        },
+        {
+            "name": "Charlie Camp",
+            "address": "10.0.0.3",
+            "port": 1234,
+            "map_id": "maps/forest",
+            "current_players": 0,
+            "max_players": 16,
+            "bots": 0,
+            "player": []
+        }
+    ],
+    "trend": {
+        "peak24h": 42,
+        "peak7d": 58,
+        "latest": 23,
+        "series24h": [
+            { "date": "00:00", "count": 10 },
+            { "date": "04:00", "count": 6 },
+            { "date": "08:00", "count": 18 },
+            { "date": "12:00", "count": 42 },
+            { "date": "16:00", "count": 30 },
+            { "date": "20:00", "count": 23 }
+        ]
+    },
+    "latencyMap": [
+        ["10.0.0.1:1234", 45],
+        ["10.0.0.2:1234", 130],
+        ["10.0.0.3:1234", null]
+    ],
+    "historicalServers": [
+        {
+            "name": "Delta Down",
+            "address": "10.0.0.4",
+            "port": 1234,
+            "map_id": "maps/snow",
+            "current_players": 0,
+            "max_players": 16,
+            "bots": 0,
+            "player": [],
+            "lastSeenAt": 0
+        }
+    ]
+}

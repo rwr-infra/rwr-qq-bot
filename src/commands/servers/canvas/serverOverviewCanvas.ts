@@ -1,8 +1,23 @@
 import { createCanvas, Canvas2DContext } from '../../../services/canvasBackend';
 import { BaseCanvas } from '../../../services/baseCanvas';
 import { buildCanvasFont } from '../../../services/canvasFonts';
-import { IServerOverviewStats, ITrendSummary } from '../types/types';
-import { formatMapDuration, getCountColor } from '../utils/utils';
+import {
+    roundRectPath,
+    drawSegments,
+    truncate,
+    drawFitText,
+    TextSegment,
+} from '../../../services/canvasHelpers';
+import {
+    HistoricalServerItem,
+    IServerOverviewStats,
+    ITrendSummary,
+} from '../types/types';
+import {
+    formatMapDuration,
+    getCountColor,
+    getServerInfoDisplaySectionText,
+} from '../utils/utils';
 
 // ============================================================================
 // 布局常量
@@ -23,6 +38,7 @@ const TREND_H = 128;
 const SECTION_HEADER_H = 40;
 const DETAIL_COL_HEADER_H = 28;
 const DETAIL_ROW_H = 34;
+const OFFLINE_ROW_H = 28;
 const SECTION_GAP = 18;
 
 const FOOTER_H = 40;
@@ -48,6 +64,7 @@ export class ServerOverviewCanvas extends BaseCanvas {
     trend: ITrendSummary;
     mapStartedAtMap: Map<string, number | null>;
     latencyMap: Map<string, number | null>;
+    historicalServers: HistoricalServerItem[];
     fileName: string;
 
     renderHeight = 0;
@@ -58,6 +75,7 @@ export class ServerOverviewCanvas extends BaseCanvas {
         fileName: string,
         mapStartedAtMap: Map<string, number | null> = new Map(),
         latencyMap: Map<string, number | null> = new Map(),
+        historicalServers: HistoricalServerItem[] = [],
     ) {
         super();
         this.stats = stats;
@@ -65,6 +83,7 @@ export class ServerOverviewCanvas extends BaseCanvas {
         this.fileName = fileName;
         this.mapStartedAtMap = mapStartedAtMap;
         this.latencyMap = latencyMap;
+        this.historicalServers = historicalServers;
     }
 
     /** 延迟着色: 低绿 / 中琥珀 / 高红 / 无数据灰 */
@@ -105,6 +124,13 @@ export class ServerOverviewCanvas extends BaseCanvas {
                 SECTION_GAP;
         }
 
+        if (this.historicalServers.length > 0) {
+            h +=
+                SECTION_HEADER_H +
+                this.historicalServers.length * OFFLINE_ROW_H +
+                SECTION_GAP;
+        }
+
         h += FOOTER_H;
         return h;
     }
@@ -120,18 +146,7 @@ export class ServerOverviewCanvas extends BaseCanvas {
         h: number,
         r: number,
     ) {
-        const radius = Math.min(r, w / 2, h / 2);
-        ctx.beginPath();
-        ctx.moveTo(x + radius, y);
-        ctx.lineTo(x + w - radius, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-        ctx.lineTo(x + w, y + h - radius);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-        ctx.lineTo(x + radius, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-        ctx.lineTo(x, y + radius);
-        ctx.quadraticCurveTo(x, y, x + radius, y);
-        ctx.closePath();
+        return roundRectPath(ctx, x, y, w, h, r);
     }
 
     /**
@@ -142,22 +157,10 @@ export class ServerOverviewCanvas extends BaseCanvas {
         ctx: Canvas2DContext,
         anchorX: number,
         y: number,
-        segments: Array<{ text: string; color: string; font: string }>,
+        segments: TextSegment[],
         align: 'left' | 'right' = 'left',
     ) {
-        const total = segments.reduce((w, s) => {
-            ctx.font = s.font;
-            return w + ctx.measureText(s.text).width;
-        }, 0);
-
-        ctx.textAlign = 'left';
-        let cx = align === 'right' ? anchorX - total : anchorX;
-        for (const s of segments) {
-            ctx.font = s.font;
-            ctx.fillStyle = s.color;
-            ctx.fillText(s.text, cx, y);
-            cx += ctx.measureText(s.text).width;
-        }
+        return drawSegments(ctx, anchorX, y, segments, align);
     }
 
     private truncate(
@@ -165,14 +168,7 @@ export class ServerOverviewCanvas extends BaseCanvas {
         text: string,
         maxWidth: number,
     ): string {
-        if (ctx.measureText(text).width <= maxWidth) {
-            return text;
-        }
-        let str = text;
-        while (str.length > 1 && ctx.measureText(str + '…').width > maxWidth) {
-            str = str.slice(0, -1);
-        }
-        return str + '…';
+        return truncate(ctx, text, maxWidth);
     }
 
     /**
@@ -190,18 +186,17 @@ export class ServerOverviewCanvas extends BaseCanvas {
         color: string,
         align: 'left' | 'right' = 'left',
     ) {
-        ctx.textAlign = align;
-        for (let size = startSize; size >= minSize; size--) {
-            ctx.font = buildCanvasFont(size);
-            if (ctx.measureText(text).width <= maxWidth) {
-                ctx.fillStyle = color;
-                ctx.fillText(text, x, y);
-                return;
-            }
-        }
-        ctx.font = buildCanvasFont(minSize);
-        ctx.fillStyle = color;
-        ctx.fillText(text, x, y);
+        return drawFitText(
+            ctx,
+            text,
+            x,
+            y,
+            maxWidth,
+            startSize,
+            minSize,
+            color,
+            align,
+        );
     }
 
     // ------------------------------------------------------------------
@@ -612,6 +607,60 @@ export class ServerOverviewCanvas extends BaseCanvas {
         );
     }
 
+    // ------------------------------------------------------------------
+    // 段二补充: 近期离线服务器(弱化展示)
+    // ------------------------------------------------------------------
+    private renderOfflineSection(ctx: Canvas2DContext, y: number): number {
+        if (this.historicalServers.length === 0) {
+            return y;
+        }
+
+        y = this.renderSectionHeader(ctx, y, '近5分钟离线服务器');
+
+        const nameX = PAD;
+        const mapX = PAD + 250;
+        const playersRight = PAD + 470;
+        const elapsedRight = WIDTH - PAD;
+
+        ctx.textBaseline = 'middle';
+
+        this.historicalServers.forEach((s, i) => {
+            const rowY = y + i * OFFLINE_ROW_H;
+            const midY = rowY + OFFLINE_ROW_H / 2;
+            const sec = getServerInfoDisplaySectionText(s);
+
+            ctx.textAlign = 'left';
+            ctx.font = buildCanvasFont(12, 'normal');
+            ctx.fillStyle = COLOR_MUTED;
+            ctx.fillText(
+                truncate(ctx, s.name, mapX - nameX - 14),
+                nameX,
+                midY,
+            );
+
+            ctx.font = buildCanvasFont(11, 'normal');
+            ctx.fillStyle = 'rgba(203, 184, 163, 0.7)';
+            ctx.fillText(
+                truncate(ctx, sec.mapSection.trim(), playersRight - mapX - 20),
+                mapX,
+                midY,
+            );
+
+            ctx.textAlign = 'right';
+            ctx.font = buildCanvasFont(12, 'normal');
+            ctx.fillStyle = COLOR_MUTED;
+            ctx.fillText(sec.playersSection, playersRight, midY);
+
+            const elapsedMin = Math.ceil((Date.now() - s.lastSeenAt) / 60000);
+            ctx.fillStyle = 'rgba(203, 184, 163, 0.6)';
+            ctx.fillText(`${elapsedMin}分钟前`, elapsedRight, midY);
+        });
+
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+        return y + this.historicalServers.length * OFFLINE_ROW_H + SECTION_GAP;
+    }
+
     render() {
         this.record();
         this.renderHeight = this.computeHeight();
@@ -632,6 +681,7 @@ export class ServerOverviewCanvas extends BaseCanvas {
 
         // 段二 服务器详情
         y = this.renderServerDetail(ctx, y);
+        y = this.renderOfflineSection(ctx, y);
 
         // 段三 页脚
         this.renderStartY = y;
