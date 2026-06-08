@@ -88,26 +88,6 @@ export const getJoinServerUrl = (server: OnlineServerItem): string => {
     return str;
 };
 
-export const getServersHeaderDisplaySectionText = (
-    serverList: OnlineServerItem[],
-): {
-    serversTotalSection: string;
-    playersTotalStaticSection: string;
-    playersCountSection: string;
-} => {
-    const serversTotalSection = `在线服务器数: ${serverList.length}, `;
-    const playersTotalStaticSection = `在线玩家数: `;
-    const playersCountSection = `${countTotalPlayers(
-        serverList,
-    )} / ${countServersMaxPlayers(serverList)}`;
-
-    return {
-        serversTotalSection,
-        playersTotalStaticSection,
-        playersCountSection,
-    };
-};
-
 /**
  * Get formatted server display section text(server name, players, map)
  * @param server

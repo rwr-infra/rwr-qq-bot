@@ -1,0 +1,71 @@
+{
+    "trend": {
+        "peak24h": 20,
+        "peak7d": 25,
+        "latest": 14,
+        "series24h": [
+            { "date": "10时", "count": 8 },
+            { "date": "11时", "count": 11 },
+            { "date": "12时", "count": 15 },
+            { "date": "13时", "count": 20 },
+            { "date": "14时", "count": 18 },
+            { "date": "15时", "count": 16 },
+            { "date": "16时", "count": 13 },
+            { "date": "17时", "count": 17 },
+            { "date": "18时", "count": 19 },
+            { "date": "19时", "count": 14 }
+        ]
+    },
+    "series7d": [
+        { "date": "6/2", "count": 18 },
+        { "date": "6/3", "count": 22 },
+        { "date": "6/4", "count": 25 },
+        { "date": "6/5", "count": 21 },
+        { "date": "6/6", "count": 19 },
+        { "date": "6/7", "count": 23 },
+        { "date": "6/8", "count": 20 }
+    ],
+    "servers": [
+        {
+            "serverKey": "1.2.3.4:1234",
+            "serverName": "[Castling-1][EZ][230%]",
+            "series": [
+                { "date": "16时", "count": 6 },
+                { "date": "17时", "count": 9 },
+                { "date": "18时", "count": 12 },
+                { "date": "19时", "count": 10 }
+            ],
+            "peak": 12,
+            "latest": 10,
+            "avg": 9
+        },
+        {
+            "serverKey": "1.2.3.4:1236",
+            "serverName": "[Castling-2][Normal][150%]",
+            "series": [
+                { "date": "16时", "count": 4 },
+                { "date": "17时", "count": 5 },
+                { "date": "18时", "count": 7 },
+                { "date": "19时", "count": 6 }
+            ],
+            "peak": 7,
+            "latest": 6,
+            "avg": 6
+        },
+        {
+            "serverKey": "1.2.3.4:1238",
+            "serverName": "[Invasion][Hard]",
+            "series": [
+                { "date": "16时", "count": 2 },
+                { "date": "17时", "count": 3 },
+                { "date": "18时", "count": 2 },
+                { "date": "19时", "count": 4 }
+            ],
+            "peak": 4,
+            "latest": 4,
+            "avg": 3
+        }
+    ],
+    "lastUpdateTime": 1577836800000,
+    "activeCount": 3
+}

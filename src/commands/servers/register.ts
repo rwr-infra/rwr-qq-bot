@@ -2,6 +2,7 @@ import { logger } from '../../utils/logger';
 import { GlobalEnv, MsgExecCtx, IRegister } from '../../types';
 import { getStaticHttpPath } from '../../utils/cmdreq';
 import {
+    printAnalyticsPng,
     printMapPng,
     printMapDetailPng,
     printPlayersPng,
@@ -10,6 +11,7 @@ import {
     printUserInServerListPng,
 } from './utils/canvas';
 import {
+    ANALYTICS_OVERVIEW_OUTPUT_FILE,
     MAPS_OUTPUT_FILE,
     MAP_DETAIL_OUTPUT_FILE,
     PLAYERS_OUTPUT_FILE,
@@ -24,12 +26,8 @@ import {
     getServersForMap,
 } from './utils/utils';
 import { aggregateOverview, readTrendSummary } from './utils/overview';
+import { buildAnalyticsView } from './utils/analytics';
 import { pingServers } from './utils/ping';
-import {
-    printChartPng,
-    printHoursChartPng,
-    printServerChartPng,
-} from './charts/chart';
 import { AnalysticsTask } from './tasks/analysticsTask';
 import { AnalysticsHoursTask } from './tasks/analyticsHoursTask';
 import { AnalysticsServerTask } from './tasks/analyticsServerTask';
@@ -432,36 +430,21 @@ export const AnalyticsCommandRegister: IRegister = {
     name: 'analytics',
     alias: 'a',
     description:
-        '查询服务器统计信息(参数 h 表明查询最近 24 小时的数据, d 表明查询最近 7 天的数据).[15s CD]',
-    hint: [
-        '按周查询服务器统计信息: #analytics',
-        '按小时查询服务器统计信息: #analytics h',
-    ],
+        '查询服务器统计总览(全局24h/7日在线趋势 + 各服务器维度峰值排行与24h趋势, 一图呈现).[15s CD]',
+    hint: ['查询服务器统计总览: #analytics'],
     isAdmin: false,
     timesInterval: 15,
     exec: async (ctx): Promise<void> => {
-        let queryParam = 'd';
-
-        ctx.params.forEach((checked: boolean, inputParam: string) => {
-            queryParam = inputParam;
-        });
         await executeSharedGroupCommand(ctx, {
             command: 'analytics',
-            params: { queryParam },
+            params: {},
             cdMs: 5000,
             apiCall: async (): Promise<ApiResult> => {
-                let outputFile = '';
-                switch (queryParam) {
-                    case 'h': {
-                        outputFile = await printHoursChartPng();
-                        break;
-                    }
-                    case 'd':
-                    default: {
-                        outputFile = await printChartPng();
-                    }
-                }
-
+                const view = buildAnalyticsView();
+                const outputFile = printAnalyticsPng(
+                    view,
+                    ANALYTICS_OVERVIEW_OUTPUT_FILE,
+                );
                 return { serverList: [], outputFile };
             },
             buildReply: async (apiResult) =>
@@ -469,53 +452,59 @@ export const AnalyticsCommandRegister: IRegister = {
                     ctx.env,
                     apiResult.outputFile,
                 )},cache=0,c=8]`,
-            firstRequesterMessage:
-                '正在生成统计图, 过程可能需要1分钟, 请稍后...',
-            pendingMessage: '统计图正在生成中，请稍后...',
-            failureMessage: '生成统计图失败，请稍后重试',
+            firstRequesterMessage: '正在生成统计总览, 请稍后...',
+            pendingMessage: '统计总览正在生成中，请稍后...',
+            failureMessage: '生成统计总览失败，请稍后重试',
         });
     },
     init: async (env: GlobalEnv): Promise<void> => {
         logger.info('AnalyticsCommandRegister::init()');
+        // 统计总览依赖以下任务持续写入(均为幂等启动)
         AnalysticsTask.start(env);
         AnalysticsHoursTask.start(env);
+        AnalysticsServerTask.start(env);
     },
 };
 
 // ============================================================================
 // SERVER ANALYTICS COMMAND - 查询各服务器统计信息
 // ============================================================================
+// 别名命令: 与 #analytics 产出同一张统计总览图(保留 #sa / #serveranalytics 触发)
 export const ServerAnalyticsCommandRegister: IRegister = {
     name: 'serveranalytics',
     alias: 'sa',
     description:
-        '查询各服务器统计信息(最近24小时各服务器在线玩家数据).[15s CD]',
-    hint: ['查询各服务器24小时统计信息: #serveranalytics'],
+        '查询服务器统计总览(等同 #analytics: 全局趋势 + 各服务器维度峰值排行与24h趋势).[15s CD]',
+    hint: ['查询服务器统计总览: #serveranalytics'],
     isAdmin: false,
     timesInterval: 15,
     exec: async (ctx): Promise<void> => {
         await executeSharedGroupCommand(ctx, {
-            command: 'serveranalytics',
+            command: 'analytics',
             params: {},
             cdMs: 5000,
-            apiCall: async (): Promise<ApiResult> => ({
-                serverList: [],
-                outputFile: await printServerChartPng(),
-            }),
+            apiCall: async (): Promise<ApiResult> => {
+                const view = buildAnalyticsView();
+                const outputFile = printAnalyticsPng(
+                    view,
+                    ANALYTICS_OVERVIEW_OUTPUT_FILE,
+                );
+                return { serverList: [], outputFile };
+            },
             buildReply: async (apiResult) =>
                 `[CQ:image,file=${getStaticHttpPath(
                     ctx.env,
                     apiResult.outputFile,
                 )},cache=0,c=8]`,
-            firstRequesterMessage:
-                '正在生成各服务器统计图, 过程可能需要1分钟, 请稍后...',
-            pendingMessage: '各服务器统计图正在生成中，请稍后...',
-            failureMessage:
-                '服务器统计数据尚未生成或生成失败，请等待 2-10 分钟后重试（定时任务会持续写入数据）',
+            firstRequesterMessage: '正在生成统计总览, 请稍后...',
+            pendingMessage: '统计总览正在生成中，请稍后...',
+            failureMessage: '生成统计总览失败，请稍后重试',
         });
     },
     init: async (env: GlobalEnv): Promise<void> => {
         logger.info('ServerAnalyticsCommandRegister::init()');
+        AnalysticsTask.start(env);
+        AnalysticsHoursTask.start(env);
         AnalysticsServerTask.start(env);
     },
 };

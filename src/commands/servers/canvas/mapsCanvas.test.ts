@@ -3,20 +3,33 @@ import { MapsCanvas } from './mapsCanvas';
 import { OnlineServerItem, IMapDataItem } from '../types/types';
 
 // Mock canvas backend to avoid loading native renderer.
+const makeCtx = () => ({
+    fillStyle: '',
+    strokeStyle: '',
+    font: '',
+    textAlign: '',
+    textBaseline: '',
+    fillRect: vi.fn(),
+    fillText: vi.fn(),
+    measureText: vi.fn().mockReturnValue({ width: 100 }),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    closePath: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    rect: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    drawImage: vi.fn(),
+});
+
 vi.mock('../../../services/canvasBackend', () => ({
     createCanvas: vi.fn().mockImplementation(() => ({
-        getContext: vi.fn().mockReturnValue({
-            fillStyle: '',
-            fillRect: vi.fn(),
-            fillText: vi.fn(),
-            measureText: vi.fn().mockReturnValue({ width: 100 }),
-            strokeStyle: '',
-            rect: vi.fn(),
-            stroke: vi.fn(),
-            drawImage: vi.fn(),
-        }),
-        toBufferSync: vi.fn().mockReturnValue(Buffer.from('test')),
+        getContext: vi.fn().mockImplementation(() => makeCtx()),
     })),
+    toPngBuffer: vi.fn().mockReturnValue(Buffer.from('test')),
     loadImageFrom: vi.fn().mockResolvedValue({ width: 200, height: 200 }),
 }));
 
@@ -24,18 +37,17 @@ describe('MapsCanvas', () => {
     let mapsCanvas: MapsCanvas;
     const mockServers = [
         {
-            map_id: 'test_map',
+            name: 'Alpha',
+            address: '10.0.0.1',
+            port: 1234,
+            map_id: 'maps/test_map',
             current_players: 10,
             max_players: 20,
-            // other required fields...
         },
     ] as OnlineServerItem[];
     const mockMaps = [
-        {
-            id: 'test_map',
-            name: 'Test Map',
-            // other required fields...
-        },
+        { id: 'test_map', name: 'Test Map' },
+        { id: 'idle_map', name: 'Idle Map' },
     ] as IMapDataItem[];
 
     beforeEach(() => {
@@ -49,27 +61,16 @@ describe('MapsCanvas', () => {
         expect(mapsCanvas.fileName).toBe('test.png');
     });
 
-    describe('measureTitle', () => {
-        it('should measure title width correctly', () => {
-            mapsCanvas.measureTitle();
-            // CN word: 7 * (20 * 2) = 280, EN word: 3 * 20 = 60, Padding: 20
-            // 360 = 280 + 60 + 20
-            expect(mapsCanvas.measureMaxWidth).toBe(360);
-            expect(mapsCanvas.totalTitle).toBe('共计 1 项地图数据');
-        });
+    it('should render without throwing and produce positive dimensions', () => {
+        const outPath = mapsCanvas.render();
+        expect(outPath).toContain('test.png');
+        // 一张活跃地图卡片 + 一张空闲地图 chip → 宽高均应为正
+        expect(mapsCanvas.renderWidth).toBeGreaterThan(0);
+        expect(mapsCanvas.renderHeight).toBeGreaterThan(0);
     });
 
-    // describe('measureList', () => {
-    //     it('should measure list dimensions correctly', () => {
-    //         mapsCanvas.measureList();
-    //         expect(mapsCanvas.renderHeight).toBe(160); // 120 base + 40 per line (1 line)
-    //         expect(mapsCanvas.contentLines).toBe(1); // Only 1 map in mock data
-    //     });
-    // });
-
-    // describe('render', () => {
-    //     it('should render canvas without errors', () => {
-    //         expect(mapsCanvas.render()).not.toThrowError();
-    //     });
-    // });
+    it('should render with empty data without throwing', () => {
+        const empty = new MapsCanvas([], [], 'empty.png');
+        expect(() => empty.render()).not.toThrow();
+    });
 });

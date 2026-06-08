@@ -4,39 +4,78 @@ import {
     type Canvas2DContext,
 } from '../../services/canvasBackend';
 import { buildCanvasFont } from '../../services/canvasFonts';
+import {
+    roundRectPath,
+    drawSegments,
+    measureSegmentsWidth,
+    truncate,
+    TextSegment,
+} from '../../services/canvasHelpers';
 import type { CheckLatencyResult, CheckReport } from './types';
 
-const TITLE_FONT = buildCanvasFont(20);
-const BODY_FONT = buildCanvasFont(20);
-const SMALL_FONT = buildCanvasFont(10);
-const LINE_HEIGHT = 40;
-const PADDING_X = 20;
-const CONTENT_START_X = 20;
-const CANVAS_MIN_WIDTH = 820;
-const OUTER_PADDING = 10;
+// ============================================================================
+// 布局常量(沿用 ServersCanvas / 家族的视觉节奏)
+// ============================================================================
+const PAD = 30;
+const TITLE_H = 56;
+const SECTION_GAP = 18;
 
+const CARD_PAD_X = 16;
+const CARD_PAD_TOP = 14;
+const CARD_PAD_BOTTOM = 14;
+const CARD_RADIUS = 12;
+
+const SECTION_HEADER_H = 40;
+const ROW_H = 30; // 面板内每行行高
+const DOT_R = 5; // 状态点半径
+const DOT_GAP = 12; // 状态点与文本间距
+const RIGHT_GAP = 40; // 左文本与右值之间的最小间距
+
+const FOOTER_H = 40;
+
+// 配色(与 ServerOverviewCanvas / 家族一致)
+const COLOR_BG = '#451a03';
+const COLOR_CARD = 'rgba(0, 0, 0, 0.5)';
+const COLOR_ACCENT = '#f48225';
+const COLOR_TEXT = '#f8fafc';
+const COLOR_MUTED = '#cbb8a3';
+
+// 延迟/状态着色(与 serverOverviewCanvas.latencyColor 一致)
+const COLOR_LATENCY_LOW = '#4ade80';
+const COLOR_LATENCY_MID = '#fbbf24';
+const COLOR_LATENCY_HIGH = '#f87171';
+const COLOR_OK_ALL = '#22c55e'; // 标题统计: 全部可达
+const COLOR_PARTIAL = '#f97316'; // 标题统计: 部分可达
+
+const TITLE_TEXT = '网络连通性检查';
+const CORE_SECTION_TITLE = '核心服务';
+const SERVERS_SECTION_TITLE = '服务器列表 Ping';
+const TITLE_GAP = 40;
+
+/** 状态/延迟着色: ok 且低绿/中琥珀/高红; 非 ok skipped 弱化, 其余红 */
 const getStatusColor = (item: CheckLatencyResult): string => {
+    if (item.status === 'skipped') {
+        return COLOR_MUTED;
+    }
     if (item.status !== 'ok' || typeof item.latencyMs !== 'number') {
-        return '#ef4444';
+        return COLOR_LATENCY_HIGH;
     }
-    if (item.latencyMs > 150) {
-        return '#ef4444';
+    if (item.latencyMs < 80) {
+        return COLOR_LATENCY_LOW;
     }
-    if (item.latencyMs >= 100) {
-        return '#f97316';
+    if (item.latencyMs < 180) {
+        return COLOR_LATENCY_MID;
     }
-    return '#22c55e';
+    return COLOR_LATENCY_HIGH;
 };
 
 const getStatusText = (item: CheckLatencyResult): string => {
     if (item.status === 'ok' && typeof item.latencyMs === 'number') {
         return `${item.latencyMs} ms`;
     }
-
     if (item.message) {
         return item.message;
     }
-
     switch (item.status) {
         case 'skipped':
             return 'skipped';
@@ -47,27 +86,6 @@ const getStatusText = (item: CheckLatencyResult): string => {
     }
 };
 
-const ellipsis = (
-    context: Canvas2DContext,
-    text: string,
-    maxWidth: number,
-): string => {
-    if (context.measureText(text).width <= maxWidth) {
-        return text;
-    }
-
-    let current = text;
-    while (current.length > 1) {
-        current = current.slice(0, -1);
-        const candidate = `${current}...`;
-        if (context.measureText(candidate).width <= maxWidth) {
-            return candidate;
-        }
-    }
-
-    return text;
-};
-
 const getDisplayTarget = (item: CheckLatencyResult): string => {
     if (!item.target || item.target === '-') {
         return '';
@@ -75,18 +93,22 @@ const getDisplayTarget = (item: CheckLatencyResult): string => {
     return ` (${item.target})`;
 };
 
+interface PanelSection {
+    title: string;
+    rows: CheckLatencyResult[];
+    /** rows 为空时面板内的占位文本(无则不显示占位) */
+    emptyPlaceholder?: string;
+}
+
+/**
+ * 网络连通性检查画布 — 分节面板卡片布局(与家族设计语言一致):
+ *   标题(右侧可达统计) + 核心服务面板 + 服务器列表 Ping 面板 + 页脚
+ * 画布宽度按内容自适应。
+ */
 export class CheckCanvas extends BaseCanvas {
-    private renderWidth = CANVAS_MIN_WIDTH;
+    private renderWidth = 0;
     private renderHeight = 0;
-    private contentLines = 0;
-    private maxRectWidth = 0;
-    private rectWidth = 0;
-    private measureMaxWidth = 0;
-    private totalTitle = '';
-    private titleStaticSection = '';
-    private titleServerCountSection = '';
-    private titleReachableStaticSection = '';
-    private titleReachableCountSection = '';
+    totalFooter = '';
 
     constructor(
         private readonly report: CheckReport,
@@ -95,253 +117,303 @@ export class CheckCanvas extends BaseCanvas {
         super();
     }
 
-    private getSummarySectionText() {
-        const serverOkCount = this.report.servers.filter(
-            (item) => item.status === 'ok',
-        ).length;
-
-        return `核心服务: 4 项, 服务器: ${this.report.servers.length} 项, 可达: ${serverOkCount}/${this.report.servers.length}`;
-    }
-
-    private buildTitleSections() {
-        const serverOkCount = this.report.servers.filter(
-            (item) => item.status === 'ok',
-        ).length;
-
-        this.titleStaticSection = '网络连通性检查: 核心服务 4 项, 服务器 ';
-        this.titleServerCountSection = `${this.report.servers.length} 项`;
-        this.titleReachableStaticSection = ', 可达 ';
-        this.titleReachableCountSection = `${serverOkCount}/${this.report.servers.length}`;
-        this.totalTitle =
-            this.titleStaticSection +
-            this.titleServerCountSection +
-            this.titleReachableStaticSection +
-            this.titleReachableCountSection;
-    }
-
-    private getRows(): CheckLatencyResult[] {
+    private coreRows(): CheckLatencyResult[] {
         return [
             this.report.remoteApi,
             this.report.aiAgent,
             this.report.imageServer,
             this.report.database,
-            ...this.report.servers,
         ];
     }
 
-    private measureTitle(context: Canvas2DContext) {
-        context.font = TITLE_FONT;
-        this.buildTitleSections();
-        const titleWidth = context.measureText(this.totalTitle).width + 30;
-        if (titleWidth > this.measureMaxWidth) {
-            this.measureMaxWidth = titleWidth;
-        }
-    }
-
-    private measureList() {
-        const rows = this.getRows();
-        this.contentLines = rows.length + 2;
-        this.renderHeight = 120 + this.contentLines * LINE_HEIGHT;
-    }
-
-    private renderMeasuredList(context: Canvas2DContext) {
-        context.font = BODY_FONT;
-        this.maxRectWidth = 0;
-        const summaryRows = [
-            this.report.remoteApi,
-            this.report.aiAgent,
-            this.report.imageServer,
-            this.report.database,
+    private sections(): PanelSection[] {
+        return [
+            { title: CORE_SECTION_TITLE, rows: this.coreRows() },
+            {
+                title: SERVERS_SECTION_TITLE,
+                rows: this.report.servers,
+                emptyPlaceholder: '暂无服务器',
+            },
         ];
-
-        const renderRowWidth = (row: CheckLatencyResult) => {
-            const leftText = `${row.label}${getDisplayTarget(row)}`;
-            const width =
-                22 +
-                10 +
-                12 +
-                context.measureText(leftText).width +
-                40 +
-                context.measureText(getStatusText(row)).width;
-            if (width > this.maxRectWidth) {
-                this.maxRectWidth = width;
-            }
-        };
-
-        this.renderSectionHeader(context, '[核心服务]');
-        for (const row of summaryRows) {
-            renderRowWidth(row);
-            this.renderStartY += LINE_HEIGHT;
-        }
-
-        this.renderSectionHeader(context, '[服务器列表 Ping]');
-        for (const row of this.report.servers) {
-            renderRowWidth(row);
-            this.renderStartY += LINE_HEIGHT;
-        }
     }
 
-    private measureRender() {
-        this.measureMaxWidth = 0;
-        this.measureTitle(createCanvas(CANVAS_MIN_WIDTH, 200).getContext('2d'));
-        this.measureList();
-
-        const canvas = createCanvas(
-            Math.max(CANVAS_MIN_WIDTH, this.measureMaxWidth),
-            this.renderHeight,
-        );
-        const context = canvas.getContext('2d');
-
-        this.renderTitle(context);
-        this.renderMeasuredList(context);
-
-        context.font = SMALL_FONT;
-        this.renderFooter(context);
-        const footerWidth = context.measureText(this.totalFooter).width + 30;
-
-        this.renderWidth = Math.max(
-            CANVAS_MIN_WIDTH,
-            this.measureMaxWidth,
-            this.maxRectWidth + 60,
-            footerWidth,
-        );
-        this.rectWidth = this.maxRectWidth + 20;
+    /** 行左侧文本分段(label + target) */
+    private buildRowLeftSegments(row: CheckLatencyResult): TextSegment[] {
+        return [
+            { text: row.label, color: COLOR_TEXT, font: buildCanvasFont(14) },
+            {
+                text: getDisplayTarget(row),
+                color: COLOR_MUTED,
+                font: buildCanvasFont(13, 'normal'),
+            },
+        ];
     }
 
-    private renderLayout(
-        context: Canvas2DContext,
-        width: number,
-        height: number,
-    ) {
-        context.fillStyle = '#451a03';
-        context.fillRect(0, 0, width, height);
-    }
-
-    private renderTitle(context: Canvas2DContext) {
-        context.font = TITLE_FONT;
-        context.textAlign = 'left';
-        context.textBaseline = 'top';
-        context.fillStyle = '#fff';
-
-        context.fillText(this.titleStaticSection, 10, 10);
-        const titleStaticWidth = context.measureText(
-            this.titleStaticSection,
-        ).width;
-
-        context.fillStyle = '#fbbf24';
-        context.fillText(
-            this.titleServerCountSection,
-            10 + titleStaticWidth,
-            10,
-        );
-
-        const titleServerWidth = context.measureText(
-            this.titleServerCountSection,
-        ).width;
-
-        context.fillStyle = '#fff';
-        context.fillText(
-            this.titleReachableStaticSection,
-            10 + titleStaticWidth + titleServerWidth,
-            10,
-        );
-
-        const titleReachableStaticWidth = context.measureText(
-            this.titleReachableStaticSection,
-        ).width;
-
-        const serverOkCount = this.report.servers.filter(
-            (item) => item.status === 'ok',
+    /** 标题右侧的可达统计分段 */
+    private buildTitleStatSegments(): TextSegment[] {
+        const coreOk = this.coreRows().filter((r) => r.status === 'ok').length;
+        const serverOk = this.report.servers.filter(
+            (r) => r.status === 'ok',
         ).length;
-        const reachableColor =
-            serverOkCount === this.report.servers.length
-                ? '#22c55e'
-                : '#f97316';
-        context.fillStyle = reachableColor;
-        context.fillText(
-            this.titleReachableCountSection,
-            10 +
-                titleStaticWidth +
-                titleServerWidth +
-                titleReachableStaticWidth,
-            10,
-        );
+        const serverTotal = this.report.servers.length;
 
-        this.renderStartY = 10 + 40 + 10;
+        const labelFont = buildCanvasFont(13, 'normal');
+        const valueFont = buildCanvasFont(13);
+        const coreColor = coreOk === 4 ? COLOR_OK_ALL : COLOR_PARTIAL;
+        const serverColor =
+            serverTotal > 0 && serverOk === serverTotal
+                ? COLOR_OK_ALL
+                : COLOR_PARTIAL;
+
+        return [
+            { text: '核心 ', color: COLOR_MUTED, font: labelFont },
+            { text: `${coreOk}/4`, color: coreColor, font: valueFont },
+            { text: '  ·  服务器 ', color: COLOR_MUTED, font: labelFont },
+            {
+                text: `${serverOk}/${serverTotal}`,
+                color: serverColor,
+                font: valueFont,
+            },
+            { text: ' 可达', color: COLOR_MUTED, font: labelFont },
+        ];
     }
 
-    private renderSectionHeader(context: Canvas2DContext, text: string) {
-        context.font = BODY_FONT;
-        context.fillStyle = '#60a5fa';
-        context.fillText(text, CONTENT_START_X, 10 + this.renderStartY);
-        this.renderStartY += LINE_HEIGHT;
+    private panelHeight(section: PanelSection): number {
+        const rowCount = Math.max(
+            section.rows.length,
+            section.emptyPlaceholder ? 1 : 0,
+        );
+        return CARD_PAD_TOP + rowCount * ROW_H + CARD_PAD_BOTTOM;
     }
 
-    private renderRow(context: Canvas2DContext, row: CheckLatencyResult) {
-        context.font = BODY_FONT;
-        context.textAlign = 'left';
-        context.textBaseline = 'top';
+    /**
+     * 测量阶段: 计算画布宽高。
+     */
+    private prepare() {
+        const tmp = createCanvas(1, 1);
+        const ctx = tmp.getContext('2d');
 
-        const statusColor = getStatusColor(row);
-        const leftText = `${row.label}${getDisplayTarget(row)}`;
-        const rightText = getStatusText(row);
-        const rightAnchorX = OUTER_PADDING + this.rectWidth - 12;
-        const leftMaxWidth = rightAnchorX - (CONTENT_START_X + 22) - 140;
+        // (1) 行内容最大宽(点 + 左文本 + 间距 + 右值)
+        let rowContentW = 0;
+        const allRows = [...this.coreRows(), ...this.report.servers];
+        allRows.forEach((row) => {
+            const leftW = measureSegmentsWidth(
+                ctx,
+                this.buildRowLeftSegments(row),
+            );
+            ctx.font = buildCanvasFont(13);
+            const rightW = ctx.measureText(getStatusText(row)).width;
+            rowContentW = Math.max(
+                rowContentW,
+                DOT_R * 2 + DOT_GAP + leftW + RIGHT_GAP + rightW,
+            );
+        });
 
-        context.fillStyle = statusColor;
-        context.fillRect(CONTENT_START_X, 10 + this.renderStartY + 8, 10, 10);
+        // (2) footer 宽
+        this.renderFooter(ctx);
+        ctx.font = buildCanvasFont(10);
+        const footerW = this.totalFooter
+            ? ctx.measureText(this.totalFooter).width
+            : 0;
 
-        context.fillStyle = '#fff';
-        context.fillText(
-            ellipsis(context, leftText, leftMaxWidth),
-            CONTENT_START_X + 22,
-            10 + this.renderStartY,
+        // (3) 标题宽
+        const titleStatW = measureSegmentsWidth(
+            ctx,
+            this.buildTitleStatSegments(),
         );
+        ctx.font = buildCanvasFont(24);
+        const titleLeftW = ctx.measureText(TITLE_TEXT).width;
+        const titleW = titleLeftW + TITLE_GAP + titleStatW;
 
-        context.textAlign = 'right';
-        context.fillStyle = statusColor;
-        context.fillText(rightText, rightAnchorX, 10 + this.renderStartY);
-        context.textAlign = 'left';
+        // (4) 节标题宽
+        let sectionTitleW = 0;
+        ctx.font = buildCanvasFont(16);
+        this.sections().forEach((s) => {
+            sectionTitleW = Math.max(
+                sectionTitleW,
+                ctx.measureText(s.title).width + 14,
+            );
+        });
 
-        this.renderStartY += LINE_HEIGHT;
+        // (5) 整图宽高
+        this.renderWidth = Math.ceil(
+            Math.max(
+                PAD * 2 + titleW,
+                PAD * 2 + rowContentW + CARD_PAD_X * 2,
+                PAD * 2 + sectionTitleW,
+                20 + footerW,
+            ),
+        );
+        this.renderHeight = this.computeHeight();
     }
 
-    private renderRect(context: Canvas2DContext) {
-        context.strokeStyle = '#f48225';
-        context.rect(
-            OUTER_PADDING,
-            this.renderStartY + 10,
-            this.rectWidth,
-            this.contentLines * LINE_HEIGHT + 12,
+    private computeHeight(): number {
+        let h = PAD + TITLE_H;
+
+        this.sections().forEach((section) => {
+            h += SECTION_HEADER_H + this.panelHeight(section) + SECTION_GAP;
+        });
+
+        h += FOOTER_H;
+        return Math.ceil(h);
+    }
+
+    private renderTitle(ctx: Canvas2DContext, y: number): number {
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = COLOR_TEXT;
+        ctx.font = buildCanvasFont(24);
+        ctx.fillText(TITLE_TEXT, PAD, y);
+
+        drawSegments(
+            ctx,
+            this.renderWidth - PAD,
+            y + 10,
+            this.buildTitleStatSegments(),
+            'right',
         );
-        context.stroke();
-        this.renderStartY += 10;
+        ctx.textAlign = 'left';
+
+        return y + TITLE_H;
+    }
+
+    private renderSection(
+        ctx: Canvas2DContext,
+        section: PanelSection,
+        y: number,
+    ): number {
+        // 节标题(accent 竖条 + 标题)
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = COLOR_ACCENT;
+        ctx.fillRect(PAD, y + 2, 4, 20);
+        ctx.font = buildCanvasFont(16);
+        ctx.fillStyle = COLOR_TEXT;
+        ctx.fillText(section.title, PAD + 14, y);
+        y += SECTION_HEADER_H;
+
+        // 面板卡片
+        const cardX = PAD;
+        const cardW = this.renderWidth - PAD * 2;
+        const cardH = this.panelHeight(section);
+        ctx.fillStyle = COLOR_CARD;
+        roundRectPath(ctx, cardX, y, cardW, cardH, CARD_RADIUS);
+        ctx.fill();
+
+        const rowX = cardX + CARD_PAD_X;
+        const rightAnchorX = cardX + cardW - CARD_PAD_X;
+        let rowY = y + CARD_PAD_TOP;
+
+        if (section.rows.length === 0 && section.emptyPlaceholder) {
+            ctx.font = buildCanvasFont(13, 'normal');
+            ctx.fillStyle = COLOR_MUTED;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(section.emptyPlaceholder, rowX, rowY + ROW_H / 2);
+        } else {
+            section.rows.forEach((row) => {
+                const midY = rowY + ROW_H / 2;
+                const statusColor = getStatusColor(row);
+
+                // 状态点
+                ctx.beginPath();
+                ctx.arc(rowX + DOT_R, midY, DOT_R, 0, Math.PI * 2);
+                ctx.fillStyle = statusColor;
+                ctx.fill();
+
+                // 右值(先测量, 为左文本留出截断宽度)
+                const rightText = getStatusText(row);
+                ctx.font = buildCanvasFont(13);
+                const rightW = ctx.measureText(rightText).width;
+
+                // 左文本(label + target, 截断)
+                const leftX = rowX + DOT_R * 2 + DOT_GAP;
+                const leftMaxW = rightAnchorX - rightW - RIGHT_GAP - leftX;
+                ctx.textBaseline = 'middle';
+                this.drawLeftSegmentsTruncated(
+                    ctx,
+                    row,
+                    leftX,
+                    midY,
+                    Math.max(leftMaxW, 40),
+                );
+
+                // 右值
+                ctx.font = buildCanvasFont(13);
+                ctx.fillStyle = statusColor;
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(rightText, rightAnchorX, midY);
+                ctx.textAlign = 'left';
+
+                rowY += ROW_H;
+            });
+        }
+
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+        return y + cardH + SECTION_GAP;
+    }
+
+    /** 绘制 label + target, 整体超过 maxWidth 时截断 target(或 label) */
+    private drawLeftSegmentsTruncated(
+        ctx: Canvas2DContext,
+        row: CheckLatencyResult,
+        x: number,
+        midY: number,
+        maxWidth: number,
+    ) {
+        const labelFont = buildCanvasFont(14);
+        const targetFont = buildCanvasFont(13, 'normal');
+        const target = getDisplayTarget(row);
+
+        ctx.font = labelFont;
+        const labelW = ctx.measureText(row.label).width;
+
+        ctx.textAlign = 'left';
+
+        // label 自身已超宽: 截断 label, 不画 target
+        if (labelW >= maxWidth) {
+            ctx.font = labelFont;
+            ctx.fillStyle = COLOR_TEXT;
+            ctx.fillText(truncate(ctx, row.label, maxWidth), x, midY);
+            return;
+        }
+
+        ctx.font = labelFont;
+        ctx.fillStyle = COLOR_TEXT;
+        ctx.fillText(row.label, x, midY);
+
+        if (target) {
+            ctx.font = targetFont;
+            ctx.fillStyle = COLOR_MUTED;
+            ctx.fillText(
+                truncate(ctx, target, maxWidth - labelW),
+                x + labelW,
+                midY,
+            );
+        }
     }
 
     render(): string {
         this.record();
-        this.measureRender();
+        this.prepare();
 
         const canvas = createCanvas(this.renderWidth, this.renderHeight);
-        const context = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d');
 
-        this.renderLayout(context, this.renderWidth, this.renderHeight);
-        this.renderBgImg(context, this.renderWidth, this.renderHeight);
-        this.renderTitle(context);
-        this.renderRect(context);
+        ctx.fillStyle = COLOR_BG;
+        ctx.fillRect(0, 0, this.renderWidth, this.renderHeight);
+        this.renderBgImg(ctx, this.renderWidth, this.renderHeight);
 
-        this.renderSectionHeader(context, '[核心服务]');
-        this.renderRow(context, this.report.remoteApi);
-        this.renderRow(context, this.report.aiAgent);
-        this.renderRow(context, this.report.imageServer);
-        this.renderRow(context, this.report.database);
+        let y = PAD;
+        y = this.renderTitle(ctx, y);
+        this.sections().forEach((section) => {
+            y = this.renderSection(ctx, section, y);
+        });
 
-        this.renderSectionHeader(context, '[服务器列表 Ping]');
-        for (const server of this.report.servers) {
-            this.renderRow(context, server);
-        }
-
-        this.renderFooter(context);
+        this.renderStartY = y;
+        this.renderFooter(ctx);
 
         return this.writeFile(canvas, this.fileName);
     }

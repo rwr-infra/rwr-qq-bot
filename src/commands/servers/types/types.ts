@@ -101,3 +101,22 @@ export interface IServerOverviewStats {
     emptyCount: number; // current_players === 0
     serverDetail: IServerDetailItem[]; // 各服务器详情, 按玩家数降序
 }
+
+/** 单个服务器的 24h 时序摘要(供统计总览卡片使用) */
+export interface IServerAnalyticsSummary {
+    serverKey: string;
+    serverName: string;
+    series: IAnalysisData[]; // 该服务器 24h 逐时序列
+    peak: number; // series 最大值
+    latest: number | null; // series 末值
+    avg: number; // series 均值(四舍五入)
+}
+
+/** 统计总览画布视图数据 */
+export interface IAnalyticsViewData {
+    trend: ITrendSummary; // 全局 24h 序列 + 24h/7日峰值 + 最近值
+    series7d: IAnalysisData[]; // 全局 7日逐日序列
+    servers: IServerAnalyticsSummary[]; // 各服务器摘要, 按 peak 降序
+    lastUpdateTime: number | null; // analysis_server.json 的 lastUpdateTime
+    activeCount: number; // 最近一个时刻仍有数据的服务器数
+}

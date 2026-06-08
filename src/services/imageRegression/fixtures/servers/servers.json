@@ -1,0 +1,43 @@
+{
+    "serverList": [
+        {
+            "name": "[RWR] Official Server #1 — Invasion",
+            "address": "10.0.0.1",
+            "port": 1234,
+            "map_id": "media/packages/vanilla/maps/map1_beach",
+            "current_players": 16,
+            "max_players": 32,
+            "player": []
+        },
+        {
+            "name": "Bravo Base (empty)",
+            "address": "10.0.0.2",
+            "port": 1234,
+            "map_id": "media/packages/vanilla/maps/map2_town",
+            "current_players": 0,
+            "max_players": 16,
+            "player": []
+        },
+        {
+            "name": "Charlie Camp",
+            "address": "10.0.0.3",
+            "port": 1234,
+            "map_id": "media/packages/vanilla/maps/map3_pier",
+            "current_players": 32,
+            "max_players": 32,
+            "player": []
+        }
+    ],
+    "historicalServers": [
+        {
+            "name": "Delta Down",
+            "address": "10.0.0.4",
+            "port": 1234,
+            "map_id": "media/packages/vanilla/maps/map4_snow",
+            "current_players": 8,
+            "max_players": 32,
+            "player": [],
+            "lastSeenAt": 0
+        }
+    ]
+}

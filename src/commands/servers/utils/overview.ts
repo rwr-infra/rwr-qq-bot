@@ -124,3 +124,11 @@ export const readTrendSummary = (): ITrendSummary => {
         series24h: hoursData ?? [],
     };
 };
+
+/**
+ * 读取全局 7日逐日峰值序列(analysis.json), 缺失时返回空数组
+ * @returns 7日序列
+ */
+export const readDaysSeries = (): IAnalysisData[] => {
+    return readAnalysisFile(ANALYSIS_DATA_FILE) ?? [];
+};

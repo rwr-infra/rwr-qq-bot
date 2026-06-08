@@ -1,0 +1,24 @@
+{
+    "map": {
+        "id": "island_assault",
+        "name": "Island Assault"
+    },
+    "servers": [
+        {
+            "name": "Charlie Server",
+            "address": "10.0.0.3",
+            "port": 1236,
+            "map_id": "maps/island_assault",
+            "current_players": 32,
+            "max_players": 32
+        },
+        {
+            "name": "Delta Server",
+            "address": "10.0.0.4",
+            "port": 1237,
+            "map_id": "maps/island_assault",
+            "current_players": 14,
+            "max_players": 32
+        }
+    ]
+}
