@@ -6,6 +6,8 @@ import { TDoll2Canvas } from '../../commands/tdoll/canvas/tdoll2Canvas';
 import { MapsCanvas } from '../../commands/servers/canvas/mapsCanvas';
 import { MapDetailCanvas } from '../../commands/servers/canvas/mapDetailCanvas';
 import { PlayersCanvas } from '../../commands/servers/canvas/playersCanvas';
+import { ServersCanvas } from '../../commands/servers/canvas/serversCanvas';
+import { WhereisCanvas } from '../../commands/servers/canvas/whereisCanvas';
 import { ServerOverviewCanvas } from '../../commands/servers/canvas/serverOverviewCanvas';
 import { aggregateOverview } from '../../commands/servers/utils/overview';
 import { printChartPng } from '../../commands/servers/charts/chart';
@@ -121,6 +123,49 @@ export const scenarios: ImageScenario[] = [
                 new Map(),
                 data.moderators,
                 data.moderatorBadge,
+            );
+            const outPath = canvas.render();
+            return path.resolve(outPath);
+        },
+    },
+    {
+        id: 'servers-list-basic',
+        name: 'Servers list basic render',
+        run: async () => {
+            ensureOutDir();
+            const fileName = `reg-servers-${Date.now()}.png`;
+
+            const data = readJson<any>('servers/servers.json');
+
+            // 让「X分钟前」可复现: 用相对当前时刻的固定偏移(90s → 恒为 2 分钟前)
+            const historicalServers = (data.historicalServers ?? []).map(
+                (s: any) => ({ ...s, lastSeenAt: Date.now() - 90_000 }),
+            );
+
+            const canvas = new ServersCanvas(
+                data.serverList,
+                historicalServers,
+                fileName,
+                new Map(),
+            );
+            const outPath = canvas.render();
+            return path.resolve(outPath);
+        },
+    },
+    {
+        id: 'servers-whereis-basic',
+        name: 'Servers whereis basic render',
+        run: async () => {
+            ensureOutDir();
+            const fileName = `reg-whereis-${Date.now()}.png`;
+
+            const data = readJson<any>('servers/whereis.json');
+
+            const canvas = new WhereisCanvas(
+                data.matchList,
+                data.query,
+                data.count,
+                fileName,
             );
             const outPath = canvas.render();
             return path.resolve(outPath);

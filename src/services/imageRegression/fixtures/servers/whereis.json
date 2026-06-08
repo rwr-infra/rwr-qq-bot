@@ -1,0 +1,42 @@
+{
+    "query": "sky",
+    "count": 3,
+    "matchList": [
+        {
+            "user": "skyWalker",
+            "server": {
+                "name": "[RWR] Official Server #1",
+                "address": "10.0.0.1",
+                "port": 1234,
+                "map_id": "media/packages/vanilla/maps/map1_beach",
+                "current_players": 16,
+                "max_players": 32,
+                "player": []
+            }
+        },
+        {
+            "user": "blueSky",
+            "server": {
+                "name": "[RWR] Official Server #1",
+                "address": "10.0.0.1",
+                "port": 1234,
+                "map_id": "media/packages/vanilla/maps/map1_beach",
+                "current_players": 16,
+                "max_players": 32,
+                "player": []
+            }
+        },
+        {
+            "user": "sky_rocket",
+            "server": {
+                "name": "Charlie Camp",
+                "address": "10.0.0.3",
+                "port": 1234,
+                "map_id": "media/packages/vanilla/maps/map2_town",
+                "current_players": 4,
+                "max_players": 32,
+                "player": []
+            }
+        }
+    ]
+}
