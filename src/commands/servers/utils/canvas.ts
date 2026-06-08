@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import {
     HistoricalServerItem,
+    IAnalyticsViewData,
     IMapDataItem,
     IServerOverviewStats,
     ITrendSummary,
@@ -14,6 +15,7 @@ import { WhereisCanvas } from '../canvas/whereisCanvas';
 import { MapsCanvas } from '../canvas/mapsCanvas';
 import { MapDetailCanvas } from '../canvas/mapDetailCanvas';
 import { ServerOverviewCanvas } from '../canvas/serverOverviewCanvas';
+import { AnalyticsCanvas } from '../canvas/analyticsCanvas';
 
 const OUTPUT_FOLDER = 'out';
 
@@ -152,6 +154,24 @@ export const printServerOverviewPng = (
         latencyMap,
         historicalServers,
     ).render();
+
+    return outputPath;
+};
+
+/**
+ * Print analytics(统计总览) output png
+ * @param view 统计总览视图数据(全局趋势 + 各服务器维度摘要)
+ * @param fileName 输出文件名
+ */
+export const printAnalyticsPng = (
+    view: IAnalyticsViewData,
+    fileName: string,
+): string => {
+    if (!fs.existsSync(OUTPUT_FOLDER)) {
+        fs.mkdirSync(OUTPUT_FOLDER);
+    }
+
+    const outputPath = new AnalyticsCanvas(view, fileName).render();
 
     return outputPath;
 };

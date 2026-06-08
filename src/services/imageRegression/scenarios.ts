@@ -9,14 +9,10 @@ import { PlayersCanvas } from '../../commands/servers/canvas/playersCanvas';
 import { ServersCanvas } from '../../commands/servers/canvas/serversCanvas';
 import { WhereisCanvas } from '../../commands/servers/canvas/whereisCanvas';
 import { ServerOverviewCanvas } from '../../commands/servers/canvas/serverOverviewCanvas';
+import { AnalyticsCanvas } from '../../commands/servers/canvas/analyticsCanvas';
 import { CheckCanvas } from '../../commands/check/checkCanvas';
 import { aggregateOverview } from '../../commands/servers/utils/overview';
-import { printChartPng } from '../../commands/servers/charts/chart';
-import {
-    ANALYSIS_DATA_FILE,
-    ANALYSIS_OUTPUT_FILE,
-    OUTPUT_FOLDER,
-} from '../../commands/servers/types/constants';
+import { OUTPUT_FOLDER } from '../../commands/servers/types/constants';
 
 export type ImageScenario = {
     id: string;
@@ -199,6 +195,20 @@ export const scenarios: ImageScenario[] = [
         },
     },
     {
+        id: 'analytics-basic',
+        name: 'Analytics overview basic render',
+        run: async () => {
+            ensureOutDir();
+            const fileName = `reg-analytics-${Date.now()}.png`;
+
+            const view = readJson<any>('servers/analytics.json');
+
+            const canvas = new AnalyticsCanvas(view, fileName);
+            const outPath = canvas.render();
+            return path.resolve(outPath);
+        },
+    },
+    {
         id: 'check-basic',
         name: 'Check connectivity basic render',
         run: async () => {
@@ -209,28 +219,6 @@ export const scenarios: ImageScenario[] = [
 
             const canvas = new CheckCanvas(report, fileName);
             const outPath = canvas.render();
-            return path.resolve(outPath);
-        },
-    },
-    {
-        id: 'echarts-analysis-basic',
-        name: 'ECharts analysis basic render',
-        run: async () => {
-            const outDir = ensureOutDir();
-
-            // Provide deterministic input data.
-            const dataPath = path.join(outDir, ANALYSIS_DATA_FILE);
-            const data = readJson<any[]>('charts/analysis.json');
-            fs.writeFileSync(dataPath, JSON.stringify(data));
-
-            const fileName = await printChartPng();
-            if (fileName !== ANALYSIS_OUTPUT_FILE) {
-                throw new Error(
-                    `Unexpected output file: ${fileName} (expected ${ANALYSIS_OUTPUT_FILE})`,
-                );
-            }
-
-            const outPath = path.join(outDir, ANALYSIS_OUTPUT_FILE);
             return path.resolve(outPath);
         },
     },
