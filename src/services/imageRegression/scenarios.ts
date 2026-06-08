@@ -4,6 +4,7 @@ import { createCanvas, toPngBuffer } from '../canvasBackend';
 
 import { TDoll2Canvas } from '../../commands/tdoll/canvas/tdoll2Canvas';
 import { MapsCanvas } from '../../commands/servers/canvas/mapsCanvas';
+import { MapDetailCanvas } from '../../commands/servers/canvas/mapDetailCanvas';
 import { PlayersCanvas } from '../../commands/servers/canvas/playersCanvas';
 import { ServerOverviewCanvas } from '../../commands/servers/canvas/serverOverviewCanvas';
 import { aggregateOverview } from '../../commands/servers/utils/overview';
@@ -81,6 +82,20 @@ export const scenarios: ImageScenario[] = [
             const { servers, maps } = readJson<any>('servers/maps.json');
 
             const canvas = new MapsCanvas(servers, maps, fileName);
+            const outPath = canvas.render();
+            return path.resolve(outPath);
+        },
+    },
+    {
+        id: 'servers-map-detail-basic',
+        name: 'Servers map detail basic render',
+        run: async () => {
+            ensureOutDir();
+            const fileName = `reg-map-detail-${Date.now()}.png`;
+
+            const { map, servers } = readJson<any>('servers/mapDetail.json');
+
+            const canvas = new MapDetailCanvas(map, servers, fileName);
             const outPath = canvas.render();
             return path.resolve(outPath);
         },

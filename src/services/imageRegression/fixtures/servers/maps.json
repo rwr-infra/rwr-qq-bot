@@ -1,16 +1,50 @@
 {
     "servers": [
         {
-            "name": "Test Server",
-            "map_id": "maps/test_map",
-            "current_players": 10,
+            "name": "Alpha Server",
+            "address": "10.0.0.1",
+            "port": 1234,
+            "map_id": "maps/forest_camp",
+            "current_players": 18,
             "max_players": 20
+        },
+        {
+            "name": "Bravo Server",
+            "address": "10.0.0.2",
+            "port": 1235,
+            "map_id": "maps/forest_camp",
+            "current_players": 6,
+            "max_players": 24
+        },
+        {
+            "name": "Charlie Server",
+            "address": "10.0.0.3",
+            "port": 1236,
+            "map_id": "maps/island_assault",
+            "current_players": 32,
+            "max_players": 32
         }
     ],
     "maps": [
         {
-            "id": "test_map",
-            "name": "Test Map"
+            "id": "forest_camp",
+            "name": "Forest Camp"
+        },
+        {
+            "id": "island_assault",
+            "name": "Island Assault"
+        },
+        {
+            "id": "desert_storm",
+            "name": "Desert Storm"
+        },
+        {
+            "id": "urban_warfare",
+            "name": "Urban Warfare"
+        },
+        {
+            "id": "winter_front",
+            "name": "Winter Front"
         }
     ]
 }
