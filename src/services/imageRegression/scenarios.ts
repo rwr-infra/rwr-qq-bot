@@ -9,6 +9,7 @@ import { PlayersCanvas } from '../../commands/servers/canvas/playersCanvas';
 import { ServersCanvas } from '../../commands/servers/canvas/serversCanvas';
 import { WhereisCanvas } from '../../commands/servers/canvas/whereisCanvas';
 import { ServerOverviewCanvas } from '../../commands/servers/canvas/serverOverviewCanvas';
+import { CheckCanvas } from '../../commands/check/checkCanvas';
 import { aggregateOverview } from '../../commands/servers/utils/overview';
 import { printChartPng } from '../../commands/servers/charts/chart';
 import {
@@ -193,6 +194,20 @@ export const scenarios: ImageScenario[] = [
                 latencyMap,
                 historicalServers,
             );
+            const outPath = canvas.render();
+            return path.resolve(outPath);
+        },
+    },
+    {
+        id: 'check-basic',
+        name: 'Check connectivity basic render',
+        run: async () => {
+            ensureOutDir();
+            const fileName = `reg-check-${Date.now()}.png`;
+
+            const report = readJson<any>('check/check.json');
+
+            const canvas = new CheckCanvas(report, fileName);
             const outPath = canvas.render();
             return path.resolve(outPath);
         },
