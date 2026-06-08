@@ -441,11 +441,11 @@ export const AnalyticsCommandRegister: IRegister = {
             cdMs: 5000,
             apiCall: async (): Promise<ApiResult> => {
                 const view = buildAnalyticsView();
-                const outputFile = printAnalyticsPng(
+                printAnalyticsPng(
                     view,
                     ANALYTICS_OVERVIEW_OUTPUT_FILE,
                 );
-                return { serverList: [], outputFile };
+                return { serverList: [], outputFile: ANALYTICS_OVERVIEW_OUTPUT_FILE };
             },
             buildReply: async (apiResult) =>
                 `[CQ:image,file=${getStaticHttpPath(
@@ -485,11 +485,11 @@ export const ServerAnalyticsCommandRegister: IRegister = {
             cdMs: 5000,
             apiCall: async (): Promise<ApiResult> => {
                 const view = buildAnalyticsView();
-                const outputFile = printAnalyticsPng(
+                printAnalyticsPng(
                     view,
                     ANALYTICS_OVERVIEW_OUTPUT_FILE,
                 );
-                return { serverList: [], outputFile };
+                return { serverList: [], outputFile: ANALYTICS_OVERVIEW_OUTPUT_FILE };
             },
             buildReply: async (apiResult) =>
                 `[CQ:image,file=${getStaticHttpPath(
