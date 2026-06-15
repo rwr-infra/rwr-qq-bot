@@ -102,15 +102,17 @@ export class HelpCanvas extends BaseCanvas {
         const textMaxWidth = boxWidth - boxPadding * 2;
 
         ctx.font = 'bold 14pt Consolas';
+        const aliasHint = `括号内为别名缩写，可直接使用，如 ${this.model.prefix}h 等同 ${this.model.prefix}help`;
         let subtitle = '';
         if (this.model.mode === 'list') {
-            subtitle = `共 ${this.model.items.length} 个命令 | 用法: ${this.model.prefix}help <cmd> | 也可用 ${this.model.prefix}h`;
+            subtitle = `共 ${this.model.items.length} 个命令 | 用法: ${this.model.prefix}help <cmd> | 也可用 ${this.model.prefix}h\n${aliasHint}`;
         } else if (this.model.mode === 'detail') {
             subtitle = `别名: ${this.model.alias ? this.model.prefix + this.model.alias : '无'} | 用法: ${this.model.prefix}help ${this.model.name}`;
         } else if (this.model.mode === 'welcome') {
-            subtitle =
+            subtitle = `${
                 this.model.subtitle ??
-                `用法: ${this.model.prefix}help <cmd> | 也可用 ${this.model.prefix}h`;
+                `用法: ${this.model.prefix}help <cmd> | 也可用 ${this.model.prefix}h`
+            }\n${aliasHint}`;
         } else {
             subtitle = `用法: ${this.model.prefix}help | ${this.model.prefix}help <cmd>`;
         }
