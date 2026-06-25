@@ -63,6 +63,7 @@ export interface IServerAnalyticsRecord {
     serverKey: string;
     serverName: string;
     data: IServerAnalyticsHourlyData[];
+    daysData?: IServerAnalyticsHourlyData[]; // 该服务器近7日逐日峰值序列(date="M/D")，旧文件缺失时按 [] 处理
 }
 
 export interface IMapImageConfigItem {
@@ -107,7 +108,9 @@ export interface IServerAnalyticsSummary {
     serverKey: string;
     serverName: string;
     series: IAnalysisData[]; // 该服务器 24h 逐时序列
-    peak: number; // series 最大值
+    series7d: IAnalysisData[]; // 该服务器近7日逐日序列
+    peak: number; // series 最大值(24h)
+    peak7d: number; // series7d 最大值(7日)
     latest: number | null; // series 末值
     avg: number; // series 均值(四舍五入)
 }

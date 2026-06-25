@@ -119,6 +119,78 @@ export function drawFitText(
     ctx.fillText(text, x, y);
 }
 
+export interface SparklineAxisLabelOptions {
+    x: number; // 折线图左边界
+    w: number; // 折线图宽度
+    labelY: number; // 刻度文本基线 y(调用方需先设 textBaseline='middle')
+    startLabel: string; // 起始刻度(左对齐于 x)
+    endLabel: string; // 终止刻度(右对齐于 x+w)
+    peakLabel: string | null; // 峰值刻度(居中于 peakX); 为 null 表示峰值在首/尾, 不绘制
+    peakX: number; // 峰值点 x 坐标
+    mutedColor: string; // 首/尾刻度颜色
+    peakColor: string; // 峰值刻度颜色
+    font: string; // 刻度字体(三者统一)
+    minGap?: number; // 峰值标签与首/尾标签的最小像素间隙, 默认 6
+}
+
+/**
+ * 在折线图底部绘制「首 / 峰 / 尾」时间刻度。
+ * 对峰值标签做像素级防重叠: 量出三者宽度, 若峰值标签盒与首/尾标签盒间距
+ * 小于 minGap, 则跳过峰值标签(保留定义时间窗的首尾刻度)。
+ * 调用方需先设置 textBaseline。绘制结束后恢复 textAlign='left'。
+ */
+export function drawSparklineAxisLabels(
+    ctx: Canvas2DContext,
+    opts: SparklineAxisLabelOptions,
+) {
+    const {
+        x,
+        w,
+        labelY,
+        startLabel,
+        endLabel,
+        peakLabel,
+        peakX,
+        mutedColor,
+        peakColor,
+        font,
+        minGap = 6,
+    } = opts;
+
+    ctx.font = font;
+
+    // 首(左对齐) / 尾(右对齐)
+    ctx.fillStyle = mutedColor;
+    ctx.textAlign = 'left';
+    ctx.fillText(startLabel, x, labelY);
+
+    ctx.textAlign = 'right';
+    ctx.fillText(endLabel, x + w, labelY);
+
+    // 峰值(居中) —— 仅当与首/尾标签不重叠时绘制
+    if (peakLabel !== null) {
+        const wStart = ctx.measureText(startLabel).width;
+        const wEnd = ctx.measureText(endLabel).width;
+        const wPeak = ctx.measureText(peakLabel).width;
+
+        const peakLeft = peakX - wPeak / 2;
+        const peakRight = peakX + wPeak / 2;
+        const startRight = x + wStart;
+        const endLeft = x + w - wEnd;
+
+        const clearsStart = peakLeft - startRight >= minGap;
+        const clearsEnd = endLeft - peakRight >= minGap;
+
+        if (clearsStart && clearsEnd) {
+            ctx.fillStyle = peakColor;
+            ctx.textAlign = 'center';
+            ctx.fillText(peakLabel, peakX, labelY);
+        }
+    }
+
+    ctx.textAlign = 'left';
+}
+
 // ============================================================================
 // Chip(胶囊标签)流式布局 —— PlayersCanvas 使用
 // ============================================================================

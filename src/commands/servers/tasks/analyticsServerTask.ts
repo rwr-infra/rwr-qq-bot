@@ -32,6 +32,7 @@ export class AnalysticsServerTask {
             serverKey: string;
             serverName: string;
             date: string;
+            dayDate: string;
             count: number;
         }>,
     ) {
@@ -66,13 +67,19 @@ export class AnalysticsServerTask {
                     serverKey: serverData.serverKey,
                     serverName: serverData.serverName,
                     data: [],
+                    daysData: [],
                 };
                 existingConfig.records.push(record);
             } else {
                 // 如果服务器已存在，更新为最新的服务器名称
                 record.serverName = serverData.serverName;
+                // 兼容旧文件: 补齐 daysData 字段
+                if (!record.daysData) {
+                    record.daysData = [];
+                }
             }
 
+            // 24h 逐时序列(date="H时", 最多 24 条)
             const lastData =
                 record.data.length > 0
                     ? record.data[record.data.length - 1]
@@ -91,6 +98,25 @@ export class AnalysticsServerTask {
                 record.data = [...record.data.slice(1), hourlyData];
             } else {
                 record.data.push(hourlyData);
+            }
+
+            // 近7日逐日序列(date="M/D", 同日取 max, 最多 7 条)
+            const daysData = record.daysData as IServerAnalyticsHourlyData[];
+            const todayData = daysData.find(
+                (d) => d.date === serverData.dayDate,
+            );
+            if (todayData) {
+                if (todayData.count < serverData.count) {
+                    todayData.count = serverData.count;
+                }
+            } else {
+                daysData.push({
+                    date: serverData.dayDate,
+                    count: serverData.count,
+                });
+                if (daysData.length > 7) {
+                    daysData.shift();
+                }
             }
         }
 
@@ -118,6 +144,7 @@ export class AnalysticsServerTask {
             serverHistoryCache.updateSnapshot(serverList);
             const date = new Date();
             const dateStr = `${date.getHours()}时`;
+            const dayDateStr = `${date.getMonth() + 1}/${date.getDate()}`;
 
             const serverDataList = serverList.map((server) => ({
                 serverKey: AnalysticsServerTask.getServerKey(
@@ -126,6 +153,7 @@ export class AnalysticsServerTask {
                 ),
                 serverName: server.name,
                 date: dateStr,
+                dayDate: dayDateStr,
                 count: server.current_players,
             }));
 

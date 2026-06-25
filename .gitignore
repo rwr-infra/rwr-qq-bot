@@ -24,6 +24,7 @@ src/info.json
 *.sh
 website_list.json
 ecosystem.config.js
+test-data/
 
 # ai
 .opencode/

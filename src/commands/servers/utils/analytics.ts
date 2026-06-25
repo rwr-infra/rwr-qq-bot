@@ -54,8 +54,10 @@ const toSummary = (
     record: IServerAnalyticsRecord,
 ): IServerAnalyticsSummary => {
     const series = record.data ?? [];
+    const series7d = record.daysData ?? [];
     const counts = series.map((d) => d.count);
     const peak = counts.reduce((acc, cur) => Math.max(acc, cur), 0);
+    const peak7d = series7d.reduce((acc, cur) => Math.max(acc, cur.count), 0);
     const latest = series.length > 0 ? series[series.length - 1].count : null;
     const avg =
         counts.length > 0
@@ -66,7 +68,9 @@ const toSummary = (
         serverKey: record.serverKey,
         serverName: record.serverName,
         series,
+        series7d,
         peak,
+        peak7d,
         latest,
         avg,
     };

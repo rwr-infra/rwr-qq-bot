@@ -7,6 +7,7 @@ import {
     drawSegments,
     truncate,
     drawFitText,
+    drawSparklineAxisLabels,
 } from '../../../services/canvasHelpers';
 import {
     IAnalysisData,
@@ -42,7 +43,7 @@ const RANK_MAX = 15;
 const GRID_GAP = 16;
 const GRID_COLS = 2;
 const GRID_CARD_W = (CONTENT_W - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
-const GRID_CARD_H = 118;
+const GRID_CARD_H = 140;
 const GRID_MAX = 10;
 
 const EMPTY_HINT_H = 30;
@@ -99,15 +100,19 @@ export class AnalyticsCanvas extends BaseCanvas {
             h += EMPTY_HINT_H + SECTION_GAP;
         }
 
-        // 各服务器趋势卡片段
-        h += SECTION_HEADER_H;
-        if (this.view.servers.length > 0) {
-            const shown = this.shownServers().length;
-            const rows = Math.ceil(shown / GRID_COLS);
-            h += rows * GRID_CARD_H + (rows - 1) * GRID_GAP + SECTION_GAP;
-        } else {
-            h += EMPTY_HINT_H + SECTION_GAP;
-        }
+        // 各服务器趋势卡片段(24h + 近7日 两段并列)
+        const gridSectionH = (): number => {
+            let sh = SECTION_HEADER_H;
+            if (this.view.servers.length > 0) {
+                const shown = this.shownServers().length;
+                const rows = Math.ceil(shown / GRID_COLS);
+                sh += rows * GRID_CARD_H + (rows - 1) * GRID_GAP + SECTION_GAP;
+            } else {
+                sh += EMPTY_HINT_H + SECTION_GAP;
+            }
+            return sh;
+        };
+        h += gridSectionH() * 2;
 
         h += FOOTER_H;
         return h;
@@ -245,25 +250,22 @@ export class AnalyticsCanvas extends BaseCanvas {
             return;
         }
 
-        // 刻度(首 / 峰值 / 尾)
-        ctx.font = buildCanvasFont(10, 'normal');
-        ctx.fillStyle = COLOR_MUTED;
+        // 刻度(首 / 峰值 / 尾) —— 峰值标签做像素级防重叠
         ctx.textBaseline = 'middle';
         const labelY = baseline + labelH / 2 + 1;
+        drawSparklineAxisLabels(ctx, {
+            x,
+            w,
+            labelY,
+            startLabel: series[0].date,
+            endLabel: series[n - 1].date,
+            peakLabel: peakIdx > 0 && peakIdx < n - 1 ? peak.date : null,
+            peakX: peak.x,
+            mutedColor: COLOR_MUTED,
+            peakColor: COLOR_VALUE,
+            font: buildCanvasFont(10, 'normal'),
+        });
 
-        ctx.textAlign = 'left';
-        ctx.fillText(series[0].date, x, labelY);
-
-        ctx.textAlign = 'right';
-        ctx.fillText(series[n - 1].date, x + w, labelY);
-
-        if (peakIdx > 0 && peakIdx < n - 1) {
-            ctx.textAlign = 'center';
-            ctx.fillStyle = COLOR_VALUE;
-            ctx.fillText(peak.date, peak.x, labelY);
-        }
-
-        ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
     }
 
@@ -379,6 +381,20 @@ export class AnalyticsCanvas extends BaseCanvas {
         return y + KPI_CARD_H + SECTION_GAP;
     }
 
+    /** 取序列中峰值(最大 count)点的桶标签(24h 为「H时」, 7日 为「M/D」) */
+    private peakDateOf(series: IAnalysisData[]): string | null {
+        if (series.length === 0) {
+            return null;
+        }
+        let peak = series[0];
+        for (const d of series) {
+            if (d.count > peak.count) {
+                peak = d;
+            }
+        }
+        return peak.date;
+    }
+
     // ------------------------------------------------------------------
     // 段二: 全局历史趋势(双 sparkline)
     // ------------------------------------------------------------------
@@ -390,6 +406,7 @@ export class AnalyticsCanvas extends BaseCanvas {
         peakLabel: string,
         peak: number | null,
         series: IAnalysisData[],
+        peakTimeText = '',
     ) {
         const cardH = TREND_H;
         ctx.fillStyle = COLOR_CARD;
@@ -405,24 +422,26 @@ export class AnalyticsCanvas extends BaseCanvas {
         ctx.fillText(title, innerX, y + 12);
 
         if (peak !== null) {
-            drawSegments(
-                ctx,
-                x + TREND_CARD_W - 16,
-                y + 12,
-                [
-                    {
-                        text: `${peakLabel} `,
-                        color: COLOR_MUTED,
-                        font: buildCanvasFont(12, 'normal'),
-                    },
-                    {
-                        text: `${peak}人`,
-                        color: COLOR_VALUE,
-                        font: buildCanvasFont(13),
-                    },
-                ],
-                'right',
-            );
+            const segments = [
+                {
+                    text: `${peakLabel} `,
+                    color: COLOR_MUTED,
+                    font: buildCanvasFont(12, 'normal'),
+                },
+                {
+                    text: `${peak}人`,
+                    color: COLOR_VALUE,
+                    font: buildCanvasFont(13),
+                },
+            ];
+            if (peakTimeText) {
+                segments.push({
+                    text: ` @${peakTimeText}`,
+                    color: COLOR_MUTED,
+                    font: buildCanvasFont(11, 'normal'),
+                });
+            }
+            drawSegments(ctx, x + TREND_CARD_W - 16, y + 12, segments, 'right');
         }
 
         this.drawSparkline(
@@ -451,6 +470,7 @@ export class AnalyticsCanvas extends BaseCanvas {
             '峰值',
             trend.peak24h,
             trend.series24h,
+            this.peakDateOf(trend.series24h) ?? '',
         );
         this.renderTrendCard(
             ctx,
@@ -460,6 +480,7 @@ export class AnalyticsCanvas extends BaseCanvas {
             '峰值',
             trend.peak7d,
             series7d,
+            this.peakDateOf(series7d) ?? '',
         );
 
         return y + TREND_H + SECTION_GAP;
@@ -545,14 +566,19 @@ export class AnalyticsCanvas extends BaseCanvas {
     }
 
     // ------------------------------------------------------------------
-    // 段四: 各服务器 24h 趋势卡片(2 列网格)
+    // 段四 / 段五: 各服务器趋势卡片(2 列网格), 24h 与 近7日 各占一段
     // ------------------------------------------------------------------
-    private renderServerGrid(ctx: Canvas2DContext, y: number): number {
+    private renderServerGridSection(
+        ctx: Canvas2DContext,
+        y: number,
+        title: string,
+        mode: '24h' | '7d',
+    ): number {
         const total = this.view.servers.length;
         const shown = this.shownServers();
         const note = total > shown.length ? `其余 ${total - shown.length} 个已隐藏` : '';
 
-        y = this.renderSectionHeader(ctx, y, '各服务器24h趋势', note);
+        y = this.renderSectionHeader(ctx, y, title, note);
 
         if (total === 0) {
             return this.renderEmptyHint(
@@ -568,7 +594,7 @@ export class AnalyticsCanvas extends BaseCanvas {
             const x = PAD + col * (GRID_CARD_W + GRID_GAP);
             const cardY = y + row * (GRID_CARD_H + GRID_GAP);
 
-            this.renderServerCard(ctx, x, cardY, s);
+            this.renderServerCard(ctx, x, cardY, s, mode);
         });
 
         const rows = Math.ceil(shown.length / GRID_COLS);
@@ -580,6 +606,7 @@ export class AnalyticsCanvas extends BaseCanvas {
         x: number,
         y: number,
         s: IServerAnalyticsSummary,
+        mode: '24h' | '7d',
     ) {
         ctx.fillStyle = COLOR_CARD;
         roundRectPath(ctx, x, y, GRID_CARD_W, GRID_CARD_H, 12);
@@ -602,32 +629,61 @@ export class AnalyticsCanvas extends BaseCanvas {
             'left',
         );
 
-        // 迷你 sparkline
-        this.drawSparkline(ctx, innerX, y + 38, innerW, 44, s.series, false);
+        // 整宽 sparkline(按段选择 24h 或 近7日 序列)
+        const series = mode === '24h' ? s.series : s.series7d;
+        this.drawSparkline(ctx, innerX, y + 38, innerW, 42, series, false);
 
-        // 底部数值: 峰值 / 当前 / 均值
+        // 底部数值(峰值 / 当前 或 今日 / 均值)
         const labelFont = buildCanvasFont(11, 'normal');
         const valueFont = buildCanvasFont(12);
         ctx.textBaseline = 'middle';
-        const statY = y + GRID_CARD_H - 16;
+
+        const counts = series.map((d) => d.count);
+        const avg =
+            counts.length > 0
+                ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length)
+                : 0;
+        const peak = mode === '24h' ? s.peak : s.peak7d;
+        const lastLabel = mode === '24h' ? '当前 ' : '今日 ';
+        const lastVal =
+            counts.length > 0 ? `${counts[counts.length - 1]}` : '—';
+
         drawSegments(
             ctx,
             innerX,
-            statY,
+            y + GRID_CARD_H - 38,
             [
                 { text: '峰值 ', color: COLOR_MUTED, font: labelFont },
-                { text: `${s.peak}`, color: COLOR_VALUE, font: valueFont },
-                { text: '  当前 ', color: COLOR_MUTED, font: labelFont },
-                {
-                    text: s.latest === null ? '—' : `${s.latest}`,
-                    color: COLOR_ACCENT,
-                    font: valueFont,
-                },
+                { text: `${peak}`, color: COLOR_VALUE, font: valueFont },
+                { text: `  ${lastLabel}`, color: COLOR_MUTED, font: labelFont },
+                { text: lastVal, color: COLOR_ACCENT, font: valueFont },
                 { text: '  均值 ', color: COLOR_MUTED, font: labelFont },
-                { text: `${s.avg}`, color: COLOR_TEXT, font: valueFont },
+                { text: `${avg}`, color: COLOR_TEXT, font: valueFont },
             ],
             'left',
         );
+
+        // 峰值采样时间行: "在 XXXX 达到最高"(24h 精确到小时, 7日 精确到日期)
+        const peakDate = this.peakDateOf(series);
+        const smallFont = buildCanvasFont(11, 'normal');
+        if (peakDate) {
+            drawSegments(
+                ctx,
+                innerX,
+                y + GRID_CARD_H - 16,
+                [
+                    { text: '在 ', color: COLOR_MUTED, font: smallFont },
+                    { text: peakDate, color: COLOR_VALUE, font: smallFont },
+                    { text: ' 达到最高', color: COLOR_MUTED, font: smallFont },
+                ],
+                'left',
+            );
+        } else {
+            ctx.font = smallFont;
+            ctx.fillStyle = COLOR_MUTED;
+            ctx.textAlign = 'left';
+            ctx.fillText('暂无趋势数据', innerX, y + GRID_CARD_H - 16);
+        }
 
         ctx.textBaseline = 'top';
         ctx.textAlign = 'left';
@@ -649,7 +705,8 @@ export class AnalyticsCanvas extends BaseCanvas {
         y = this.renderKpiRow(ctx, y);
         y = this.renderTrendRow(ctx, y);
         y = this.renderRankingSection(ctx, y);
-        y = this.renderServerGrid(ctx, y);
+        y = this.renderServerGridSection(ctx, y, '各服务器24h趋势', '24h');
+        y = this.renderServerGridSection(ctx, y, '各服务器近7日趋势', '7d');
 
         this.renderStartY = y;
         this.renderFooter(ctx);
