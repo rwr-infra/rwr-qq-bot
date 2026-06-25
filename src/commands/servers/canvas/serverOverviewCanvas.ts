@@ -6,6 +6,7 @@ import {
     drawSegments,
     truncate,
     drawFitText,
+    drawSparklineAxisLabels,
     TextSegment,
 } from '../../../services/canvasHelpers';
 import {
@@ -352,19 +353,6 @@ export class ServerOverviewCanvas extends BaseCanvas {
                 { text: `${this.trend.peak24h}人`, color: COLOR_VALUE, font: valueFont },
             );
         }
-        if (this.trend.peak7d !== null) {
-            if (peakSegments.length > 0) {
-                peakSegments.push({
-                    text: '   ·   ',
-                    color: COLOR_MUTED,
-                    font: labelFont,
-                });
-            }
-            peakSegments.push(
-                { text: '7日峰值 ', color: COLOR_MUTED, font: labelFont },
-                { text: `${this.trend.peak7d}人`, color: COLOR_VALUE, font: valueFont },
-            );
-        }
         if (peakSegments.length > 0) {
             this.drawSegments(
                 ctx,
@@ -461,26 +449,22 @@ export class ServerOverviewCanvas extends BaseCanvas {
         ctx.fillStyle = COLOR_VALUE;
         ctx.fill();
 
-        // 小时刻度(首 / 峰值 / 尾)
-        ctx.font = buildCanvasFont(10, 'normal');
-        ctx.fillStyle = COLOR_MUTED;
+        // 小时刻度(首 / 峰值 / 尾) —— 峰值标签做像素级防重叠
         ctx.textBaseline = 'middle';
         const labelY = baseline + labelH / 2 + 1;
+        drawSparklineAxisLabels(ctx, {
+            x,
+            w,
+            labelY,
+            startLabel: series[0].date,
+            endLabel: series[n - 1].date,
+            peakLabel: peakIdx > 0 && peakIdx < n - 1 ? peak.date : null,
+            peakX: peak.x,
+            mutedColor: COLOR_MUTED,
+            peakColor: COLOR_VALUE,
+            font: buildCanvasFont(10, 'normal'),
+        });
 
-        ctx.textAlign = 'left';
-        ctx.fillText(series[0].date, x, labelY);
-
-        ctx.textAlign = 'right';
-        ctx.fillText(series[n - 1].date, x + w, labelY);
-
-        // 峰值小时(避免与首尾重叠)
-        if (peakIdx > 0 && peakIdx < n - 1) {
-            ctx.textAlign = 'center';
-            ctx.fillStyle = COLOR_VALUE;
-            ctx.fillText(peak.date, peak.x, labelY);
-        }
-
-        ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
     }
 
