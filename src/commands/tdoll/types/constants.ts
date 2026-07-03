@@ -4,12 +4,6 @@ export const TDOLL_RANDOM_KEY = 'random';
 
 export const TDOLL_URL_PREFIX = 'https://www.gfwiki.org';
 
-export const TDOLL_SKIN_NOT_FOUND =
-    '未找到指定人形编号的皮肤, 请检查输入是否有误!';
-
-export const TDOLL_SKIN_END_TEXT =
-    '所有数据来源于 gfwiki, 不保证与游戏内一致性, 请注意数据与实际游戏可能存在差异';
-
 export const TDOLL_CATEGORY_EN_MAPPER: Record<string, TDollCategoryEnum> = {
     ar: TDollCategoryEnum.AR,
     smg: TDollCategoryEnum.SMG,
@@ -31,28 +25,3 @@ export const TDOLL_CATEGORY_CN_MAPPER: Record<string, TDollCategoryEnum> = {
 export const TDOLL_SKIN_NOT_FOUND_MSG =
     '未找到指定人形编号的皮肤, 请检查输入是否有误, 请注意需要输入编号而非名称!\n若确认输入编号无误, 多数是 gfwiki 数据问题, 请尝试去 gfwiki 查看数据(这并不是 bot 本身问题)';
 
-export const TDOLL_OUTPUT_FOLDER = 'out';
-
-export const TDOLL2_OUTPUT_FILE = 'tdoll2.png';
-
-export const CANVAS_STYLE = {
-    FONT: 'bold 20pt Consolas',
-    TEXT_COLOR: '#fff',
-    BACKGROUND_COLOR: '#451a03',
-    BORDER_COLOR: '#f48225',
-    HIGHLIGHT_COLOR: '#22d3ee',
-    PADDING: 10,
-    IMAGE_SIZE: 40,
-    LINE_HEIGHT: 40,
-    TITLE_OFFSET: 60,
-    RECT_OFFSET: 10,
-    SPACING: 10,
-    FONT_SIZE: 20,
-    TITLE_PADDING: 20,
-    LIST_OFFSET: 40,
-    FOOTER_OFFSET: 30,
-    HEADER_HEIGHT: 120,
-    ROW_HEIGHT: 90,
-};
-
-export const TDOLL2_SKIN_OUTPUT_FILE = 'tdoll_skin2.png';

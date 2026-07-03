@@ -67,8 +67,10 @@ interface IRegister {
 
 - **`src/services/canvasBackend.ts`** — 封装 `skia-canvas` 的 `createCanvas` / `loadImageFrom` / `toPngBuffer`；整个项目唯一引入 `skia-canvas` 的地方
 - **`src/services/baseCanvas.ts`** — 所有画布类的基类：文本宽度计算（中文字符 2× 宽度）、背景图渲染、页脚渲染、文件写出
+- **`src/services/canvasTheme.ts`** — 共享配色常量（暖棕底 + 半透明卡片设计语言），serverOverview / tdoll 等卡片式画布统一引用
+- **`src/services/canvasHelpers.ts`** — 纯函数绘图原语：圆角矩形、分段多色文本、截断、自适应字号、胶囊布局
 
-渲染产物写入 `out/` 目录，通过 `/out/<filename>` 静态路径提供给 go-cqhttp 以 `[CQ:image,...]` 格式发送。
+渲染产物写入 `out/` 目录，通过 `/out/<filename>` 静态路径提供给 go-cqhttp 以 `[CQ:image,...]` 格式发送。多用户命令的输出文件用 `buildUserScopedPngName`（`src/utils/cmdreq.ts`）按 群/用户 命名避免并发覆盖；`out/` 顶层过期 PNG 由 `outputCleanup.service.ts` 定时清理（24h TTL）。
 
 ### 缓存机制
 

@@ -9,6 +9,7 @@ import { gracefulShutdown } from './shutdown';
 import { loadEnv } from './utils/env';
 import { getDirname } from './utils/esm';
 import { CanvasImgService } from './services/canvasImg.service';
+import { startOutputCleanupTask } from './services/outputCleanup.service';
 
 // 创建一个启动函数
 async function startServer() {
@@ -58,6 +59,8 @@ async function startServer() {
     RemoteService.init(env);
 
     registerRoutes(app, env);
+
+    startOutputCleanupTask();
 
     const address = await app.listen({
         host: env.HOSTNAME,

@@ -3,6 +3,41 @@
         "id": "1",
         "nameIngame": "Test Doll",
         "avatar": "__SET_BY_TEST__",
-        "mod": "0"
+        "mod": "0",
+        "type": "突击步枪",
+        "tdollClass": "AR"
+    },
+    {
+        "id": "2",
+        "nameIngame": "Test-Doll.2",
+        "avatar": "__SET_BY_TEST__",
+        "avatarMod": "__SET_BY_TEST__",
+        "mod": "1",
+        "type": "冲锋枪",
+        "tdollClass": "SMG"
+    },
+    {
+        "id": "3",
+        "nameIngame": "测试人形三号",
+        "avatar": "__SET_BY_TEST__",
+        "mod": "0",
+        "type": "步枪",
+        "tdollClass": "RF"
+    },
+    {
+        "id": "4",
+        "nameIngame": "Test Doll 4",
+        "avatar": "__SET_BY_TEST__",
+        "mod": "0",
+        "type": "机枪",
+        "tdollClass": "MG"
+    },
+    {
+        "id": "5",
+        "nameIngame": "Test Doll 5 With A Rather Long Name",
+        "avatar": "__SET_BY_TEST__",
+        "mod": "0",
+        "type": "手枪",
+        "tdollClass": "HG"
     }
 ]
