@@ -1,7 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import { IRegister, MessageEvent } from '../types';
-import { checkTimeIntervalValid } from './cmdreq';
+import { buildUserScopedPngName, checkTimeIntervalValid } from './cmdreq';
 import {awaitTimeout} from "./time";
+
+describe('buildUserScopedPngName', () => {
+    it.concurrent('group message', () => {
+        expect(
+            buildUserScopedPngName('tdoll', { group_id: 123, user_id: 456 }),
+        ).toBe('tdoll_123_456.png');
+    });
+
+    it.concurrent('private message falls back to "private"', () => {
+        expect(buildUserScopedPngName('tdoll', { user_id: 456 })).toBe(
+            'tdoll_private_456.png',
+        );
+    });
+
+    it.concurrent('missing user falls back to "unknown"', () => {
+        expect(buildUserScopedPngName('check', { group_id: 9 })).toBe(
+            'check_9_unknown.png',
+        );
+    });
+});
 
 const registerTemplate: IRegister = {
     name: 'test',

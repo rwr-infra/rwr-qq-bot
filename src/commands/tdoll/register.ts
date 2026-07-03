@@ -2,12 +2,13 @@ import { IRegister } from '../../types';
 import { TDollSvc } from './services/tdoll.service';
 import { TDollSkinSvc } from './services/tdollskin.service';
 import { logger } from '../../utils/logger';
+import { TDOLL_SKIN_NOT_FOUND_MSG } from './types/constants';
 import {
-    TDOLL2_SKIN_OUTPUT_FILE,
-    TDOLL_SKIN_NOT_FOUND_MSG,
-} from './types/constants';
-import { getStaticHttpPath } from '../../utils/cmdreq';
+    buildUserScopedPngName,
+    getStaticHttpPath,
+} from '../../utils/cmdreq';
 import { CommandHelper } from './utils/commandHelper';
+import { printTDollDetailPng } from './utils/utils';
 
 const createTDollCommand = (name: string, alias: string): IRegister => {
     const getErrorMessage = () => `参数不正确, 示例:
@@ -80,16 +81,17 @@ const createTDollSkinCommand = (name: string, alias: string): IRegister => {
 
             await ctx.reply('正在查询数据并生成, 请稍候...');
 
-            await CommandHelper.printTDollSkin2Png(
+            const fileName = buildUserScopedPngName('tdoll_skin', ctx.event);
+            await printTDollDetailPng(
                 query,
                 tdollData,
                 tdollSkinData,
-                TDOLL2_SKIN_OUTPUT_FILE
+                fileName
             );
 
             const replyText = `[CQ:image,file=${getStaticHttpPath(
                 ctx.env,
-                TDOLL2_SKIN_OUTPUT_FILE
+                fileName
             )},cache=0,c=8]`;
 
             await ctx.reply(replyText);

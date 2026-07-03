@@ -2,7 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createCanvas, toPngBuffer } from '../canvasBackend';
 
-import { TDoll2Canvas } from '../../commands/tdoll/canvas/tdoll2Canvas';
+import { TDollListCanvas } from '../../commands/tdoll/canvas/tdollListCanvas';
+import { TDollDetailCanvas } from '../../commands/tdoll/canvas/tdollDetailCanvas';
 import { MapsCanvas } from '../../commands/servers/canvas/mapsCanvas';
 import { MapDetailCanvas } from '../../commands/servers/canvas/mapDetailCanvas';
 import { PlayersCanvas } from '../../commands/servers/canvas/playersCanvas';
@@ -39,7 +40,7 @@ function ensureOutDir() {
     return outDir;
 }
 
-async function ensureFixturePng(filePath: string) {
+async function ensureFixturePng(filePath: string, accentColor = '#22c55e') {
     if (fs.existsSync(filePath)) {
         return;
     }
@@ -47,7 +48,7 @@ async function ensureFixturePng(filePath: string) {
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#111827';
     ctx.fillRect(0, 0, 64, 64);
-    ctx.fillStyle = '#22c55e';
+    ctx.fillStyle = accentColor;
     ctx.fillRect(8, 8, 48, 48);
     fs.writeFileSync(filePath, toPngBuffer(canvas));
 }
@@ -55,18 +56,47 @@ async function ensureFixturePng(filePath: string) {
 export const scenarios: ImageScenario[] = [
     {
         id: 'tdoll-basic',
-        name: 'TDoll2 basic render',
+        name: 'TDoll list card render',
         run: async () => {
             const outDir = ensureOutDir();
             const avatarPath = path.join(outDir, 'fixture-tdoll-avatar.png');
             await ensureFixturePng(avatarPath);
 
             const fileName = `reg-tdoll-${Date.now()}.png`;
+            const tdolls = readJson<any[]>('tdoll/tdolls.json');
+            tdolls.forEach((tdoll) => {
+                tdoll.avatar = avatarPath;
+                if (tdoll.avatarMod) {
+                    tdoll.avatarMod = avatarPath;
+                }
+            });
+
+            // 5 条触发双列布局, 展示全部匹配结果(无数量上限)
+            const canvas = new TDollListCanvas('test', tdolls, fileName);
+            const outPath = await canvas.render();
+            return path.resolve(outPath);
+        },
+    },
+    {
+        id: 'tdollskin-basic',
+        name: 'TDoll detail with skin grid render',
+        run: async () => {
+            const outDir = ensureOutDir();
+            const avatarPath = path.join(outDir, 'fixture-tdoll-avatar.png');
+            const skinPath = path.join(outDir, 'fixture-tdoll-skin.png');
+            await ensureFixturePng(avatarPath);
+            await ensureFixturePng(skinPath, '#a78bfa');
+
+            const fileName = `reg-tdollskin-${Date.now()}.png`;
             const [tdoll] = readJson<any[]>('tdoll/tdolls.json');
             tdoll.avatar = avatarPath;
+            const record = readJson<any>('tdoll/tdollskins.json');
+            record['1'].forEach((skin: any) => {
+                skin.image.pic = skinPath;
+            });
 
-            const canvas = new TDoll2Canvas('test', [tdoll], fileName);
-            await canvas.loadAllImg();
+            // 4 个皮肤覆盖 3 列网格折行
+            const canvas = new TDollDetailCanvas('1', [tdoll], record, fileName);
             const outPath = await canvas.render();
             return path.resolve(outPath);
         },

@@ -1,0 +1,60 @@
+{
+    "1": [
+        {
+            "index": 0,
+            "title": "默认立绘",
+            "value": "0",
+            "image": {
+                "anime": "0",
+                "line": "",
+                "name": "默认立绘",
+                "pic": "__SET_BY_TEST__",
+                "pic_d": "",
+                "pic_d_h": "",
+                "pic_h": ""
+            }
+        },
+        {
+            "index": 1,
+            "title": "心智升级",
+            "value": "mod",
+            "image": {
+                "anime": "0",
+                "line": "",
+                "name": "心智升级",
+                "pic": "__SET_BY_TEST__",
+                "pic_d": "",
+                "pic_d_h": "",
+                "pic_h": ""
+            }
+        },
+        {
+            "index": 2,
+            "title": "夏日限定皮肤",
+            "value": "301",
+            "image": {
+                "anime": "0",
+                "line": "",
+                "name": "夏日限定皮肤",
+                "pic": "__SET_BY_TEST__",
+                "pic_d": "",
+                "pic_d_h": "",
+                "pic_h": ""
+            }
+        },
+        {
+            "index": 3,
+            "title": "冬季限定皮肤名称特别长测试截断",
+            "value": "2105",
+            "image": {
+                "anime": "0",
+                "line": "",
+                "name": "冬季限定皮肤",
+                "pic": "__SET_BY_TEST__",
+                "pic_d": "",
+                "pic_d_h": "",
+                "pic_h": ""
+            }
+        }
+    ]
+}

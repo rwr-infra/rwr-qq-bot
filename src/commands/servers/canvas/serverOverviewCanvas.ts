@@ -1,6 +1,7 @@
 import { createCanvas, Canvas2DContext } from '../../../services/canvasBackend';
 import { BaseCanvas } from '../../../services/baseCanvas';
 import { buildCanvasFont } from '../../../services/canvasFonts';
+import { CANVAS_COLORS } from '../../../services/canvasTheme';
 import {
     roundRectPath,
     drawSegments,
@@ -44,13 +45,13 @@ const SECTION_GAP = 18;
 
 const FOOTER_H = 40;
 
-// 配色(与 ServersCanvas/PlayersCanvas 家族一致: #451a03 暖棕底 + OUTPUT_BG_IMG 可叠加)
-const COLOR_BG = '#451a03';
-const COLOR_CARD = 'rgba(0, 0, 0, 0.5)'; // 半透明深色面板, 叠在底色或背景图上均协调
-const COLOR_ACCENT = '#f48225';
-const COLOR_TEXT = '#f8fafc';
-const COLOR_MUTED = '#cbb8a3'; // 暖色调中性灰
-const COLOR_VALUE = '#fcd34d'; // 数值高亮(琥珀金), 用于峰值等
+// 配色统一取自共享主题(src/services/canvasTheme.ts), 保留局部别名以最小化 diff
+const COLOR_BG = CANVAS_COLORS.BG;
+const COLOR_CARD = CANVAS_COLORS.CARD;
+const COLOR_ACCENT = CANVAS_COLORS.ACCENT;
+const COLOR_TEXT = CANVAS_COLORS.TEXT;
+const COLOR_MUTED = CANVAS_COLORS.MUTED;
+const COLOR_VALUE = CANVAS_COLORS.VALUE;
 
 const TITLE_TEXT = '服务器状态总览';
 

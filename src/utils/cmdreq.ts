@@ -78,3 +78,12 @@ export const getStaticHttpPath = (env: GlobalEnv, path: string) => {
     }
     return `http://${env.HOSTNAME || 'localhost'}:${env.PORT}/out/${path}`;
 };
+
+/**
+ * 生成按 群/用户 区分的输出文件名, 避免并发用户互相覆盖
+ */
+export const buildUserScopedPngName = (
+    prefix: string,
+    event: { group_id?: number; user_id?: number },
+): string =>
+    `${prefix}_${event.group_id ?? 'private'}_${event.user_id ?? 'unknown'}.png`;
