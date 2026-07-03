@@ -67,7 +67,6 @@ interface IRegister {
 
 - **`src/services/canvasBackend.ts`** — 封装 `skia-canvas` 的 `createCanvas` / `loadImageFrom` / `toPngBuffer`；整个项目唯一引入 `skia-canvas` 的地方
 - **`src/services/baseCanvas.ts`** — 所有画布类的基类：文本宽度计算（中文字符 2× 宽度）、背景图渲染、页脚渲染、文件写出
-- **`src/services/layeredCanvasRenderer.ts`** — 分层渲染基类：主内容与时间戳分离，支持主内容缓存后动态叠加时间戳
 
 渲染产物写入 `out/` 目录，通过 `/out/<filename>` 静态路径提供给 go-cqhttp 以 `[CQ:image,...]` 格式发送。
 
@@ -75,7 +74,7 @@ interface IRegister {
 
 - **`AsyncCacheService`**（`src/services/asyncCache.service.ts`）— TTL 缓存基类，子类实现 `fetchData()` 即可
 - **`serverCommandCache.service.ts`** — 群级 CD + 并发请求合并 + 批量 AT
-- **`tdollRenderCache.service.ts`**、**`serverHistoryCache.service.ts`** — 特定场景缓存
+- **`serverHistoryCache.service.ts`** — 特定场景缓存（记录近期消失的服务器）
 
 ### 数据文件
 
