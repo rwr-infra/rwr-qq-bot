@@ -11,7 +11,6 @@ import {
     ServersCommandRegister,
     WhereIsCommandRegister,
     PlayersCommandRegister,
-    ServerAnalyticsCommandRegister,
     ServerOverviewCommandRegister,
 } from './servers/register';
 import { RollCommandRegister } from './roll/register';
@@ -56,7 +55,6 @@ const allCommands: IRegister[] = [
     ServersCommandRegister,
     WhereIsCommandRegister,
     AnalyticsCommandRegister,
-    ServerAnalyticsCommandRegister,
     ServerOverviewCommandRegister,
     MapsCommandRegister,
     PlayersCommandRegister,

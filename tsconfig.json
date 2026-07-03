@@ -2,7 +2,6 @@
     "compilerOptions": {
         "outDir": "./dist",
         "sourceMap": true,
-        "downlevelIteration": true,
         "experimentalDecorators": true,
         "moduleResolution": "bundler",
         "resolveJsonModule": true,

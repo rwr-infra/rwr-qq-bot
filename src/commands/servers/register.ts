@@ -467,49 +467,6 @@ export const AnalyticsCommandRegister: IRegister = {
 };
 
 // ============================================================================
-// SERVER ANALYTICS COMMAND - 查询各服务器统计信息
-// ============================================================================
-// 别名命令: 与 #analytics 产出同一张统计总览图(保留 #sa / #serveranalytics 触发)
-export const ServerAnalyticsCommandRegister: IRegister = {
-    name: 'serveranalytics',
-    alias: 'sa',
-    description:
-        '查询服务器统计总览(等同 #analytics: 全局趋势 + 各服务器维度峰值排行与24h趋势).[15s CD]',
-    hint: ['查询服务器统计总览: #serveranalytics'],
-    isAdmin: false,
-    timesInterval: 15,
-    exec: async (ctx): Promise<void> => {
-        await executeSharedGroupCommand(ctx, {
-            command: 'analytics',
-            params: {},
-            cdMs: 5000,
-            apiCall: async (): Promise<ApiResult> => {
-                const view = buildAnalyticsView();
-                printAnalyticsPng(
-                    view,
-                    ANALYTICS_OVERVIEW_OUTPUT_FILE,
-                );
-                return { serverList: [], outputFile: ANALYTICS_OVERVIEW_OUTPUT_FILE };
-            },
-            buildReply: async (apiResult) =>
-                `[CQ:image,file=${getStaticHttpPath(
-                    ctx.env,
-                    apiResult.outputFile,
-                )},cache=0,c=8]`,
-            firstRequesterMessage: '正在生成统计总览, 请稍后...',
-            pendingMessage: '统计总览正在生成中，请稍后...',
-            failureMessage: '生成统计总览失败，请稍后重试',
-        });
-    },
-    init: async (env: GlobalEnv): Promise<void> => {
-        logger.info('ServerAnalyticsCommandRegister::init()');
-        AnalysticsTask.start(env);
-        AnalysticsHoursTask.start(env);
-        AnalysticsServerTask.start(env);
-    },
-};
-
-// ============================================================================
 // OVERVIEW COMMAND - 服务器状态总览(实时快照 + 历史趋势 一图概览)
 // ============================================================================
 export const ServerOverviewCommandRegister = createServerCommand(

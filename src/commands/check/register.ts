@@ -21,6 +21,8 @@ export const CheckCommandRegister: IRegister = {
         const outputFile = `check_${ctx.event.group_id ?? 'private'}_${ctx.event.user_id}.png`;
 
         try {
+            await ctx.reply('正在检查网络连通性(含服务器延迟检测), 请稍后...');
+
             const report = await buildCheckReport(ctx.env);
             new CheckCanvas(report, outputFile).render();
 
