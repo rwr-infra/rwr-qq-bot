@@ -194,7 +194,7 @@ export const ServersCommandRegister = createServerCommand(
                 );
                 const historicalServers =
                     serverHistoryCache.getDisappearedServers(serverList);
-                printServerListPng(
+                await printServerListPng(
                     serverList,
                     historicalServers,
                     SERVERS_OUTPUT_FILE,
@@ -259,7 +259,7 @@ export const WhereIsCommandRegister: IRegister = {
 
         const userResults = getUserMatchedList(targetName, serverList);
 
-        printUserInServerListPng(
+        await printUserInServerListPng(
             userResults.results,
             targetName,
             userResults.total,
@@ -297,7 +297,7 @@ export const PlayersCommandRegister = createServerCommand(
                 );
                 const historicalServers =
                     serverHistoryCache.getDisappearedServers(serverList);
-                printPlayersPng(
+                await printPlayersPng(
                     serverList,
                     historicalServers,
                     PLAYERS_OUTPUT_FILE,
@@ -366,7 +366,7 @@ export const MapsCommandRegister: IRegister = {
                 );
                 const servers = getServersForMap(result.map.id, serverList);
 
-                printMapDetailPng(
+                await printMapDetailPng(
                     result.map,
                     servers,
                     MAP_DETAIL_OUTPUT_FILE,
@@ -397,7 +397,7 @@ export const MapsCommandRegister: IRegister = {
                     const serverList = await queryAllServers(
                         ctx.env.SERVERS_MATCH_REGEX,
                     );
-                    printMapPng(
+                    await printMapPng(
                         serverList,
                         MapsDataService.getInst().getData(),
                         MAPS_OUTPUT_FILE,
@@ -441,7 +441,7 @@ export const AnalyticsCommandRegister: IRegister = {
             cdMs: 5000,
             apiCall: async (): Promise<ApiResult> => {
                 const view = buildAnalyticsView();
-                printAnalyticsPng(
+                await printAnalyticsPng(
                     view,
                     ANALYTICS_OVERVIEW_OUTPUT_FILE,
                 );
@@ -492,7 +492,7 @@ export const ServerOverviewCommandRegister = createServerCommand(
                 const stats = aggregateOverview(serverList);
                 const trend = readTrendSummary();
                 const latencyMap = await pingServers(serverList);
-                printServerOverviewPng(
+                await printServerOverviewPng(
                     stats,
                     trend,
                     serverList,

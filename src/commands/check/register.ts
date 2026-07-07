@@ -24,7 +24,7 @@ export const CheckCommandRegister: IRegister = {
             await ctx.reply('正在检查网络连通性(含服务器延迟检测), 请稍后...');
 
             const report = await buildCheckReport(ctx.env);
-            new CheckCanvas(report, outputFile).render();
+            await new CheckCanvas(report, outputFile).render();
 
             await ctx.reply(
                 `[CQ:image,file=${getStaticHttpPath(ctx.env, outputFile)},cache=0,c=8]`,

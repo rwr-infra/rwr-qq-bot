@@ -24,17 +24,17 @@ const OUTPUT_FOLDER = 'out';
  * @param serverList server list
  * @param fileName output file name
  */
-export const printServerListPng = (
+export const printServerListPng = async (
     serverList: OnlineServerItem[],
     historicalServers: HistoricalServerItem[],
     fileName: string,
-) => {
+): Promise<string> => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
     const mapStartedAtMap = buildMapStartedAtMap(serverList);
-    const outputPath = new ServersCanvas(
+    const outputPath = await new ServersCanvas(
         serverList,
         historicalServers,
         fileName,
@@ -51,19 +51,19 @@ export const printServerListPng = (
  * @param moderators moderator player names
  * @param moderatorBadge badge string for moderators
  */
-export const printPlayersPng = (
+export const printPlayersPng = async (
     serverList: OnlineServerItem[],
     historicalServers: HistoricalServerItem[],
     fileName: string,
     moderators?: string[],
     moderatorBadge?: string,
-): string => {
+): Promise<string> => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
     const mapStartedAtMap = buildMapStartedAtMap(serverList);
-    const outputPath = new PlayersCanvas(
+    const outputPath = await new PlayersCanvas(
         serverList,
         historicalServers,
         fileName,
@@ -82,17 +82,17 @@ export const printPlayersPng = (
  * @param count total matched count
  * @param fileName output file name
  */
-export const printUserInServerListPng = (
+export const printUserInServerListPng = async (
     matchList: IUserMatchedServerItem[],
     query: string,
     count: number,
     fileName: string,
-): string => {
+): Promise<string> => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
-    const outputPath = new WhereisCanvas(
+    const outputPath = await new WhereisCanvas(
         matchList,
         query,
         count,
@@ -111,17 +111,17 @@ function buildMapStartedAtMap(serverList: OnlineServerItem[]): Map<string, numbe
     );
 }
 
-export const printMapPng = (
+export const printMapPng = async (
     serverList: OnlineServerItem[],
     mapData: IMapDataItem[],
     fileName: string,
-): string => {
+): Promise<string> => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
     const mapStartedAtMap = buildMapStartedAtMap(serverList);
-    const outputPath = new MapsCanvas(serverList, mapData, fileName, mapStartedAtMap).render();
+    const outputPath = await new MapsCanvas(serverList, mapData, fileName, mapStartedAtMap).render();
 
     return outputPath;
 };
@@ -133,20 +133,20 @@ export const printMapPng = (
  * @param historicalServers 近期离线服务器
  * @param fileName 输出文件名
  */
-export const printServerOverviewPng = (
+export const printServerOverviewPng = async (
     stats: IServerOverviewStats,
     trend: ITrendSummary,
     serverList: OnlineServerItem[],
     latencyMap: Map<string, number | null>,
     fileName: string,
     historicalServers: HistoricalServerItem[] = [],
-): string => {
+): Promise<string> => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
     const mapStartedAtMap = buildMapStartedAtMap(serverList);
-    const outputPath = new ServerOverviewCanvas(
+    const outputPath = await new ServerOverviewCanvas(
         stats,
         trend,
         fileName,
@@ -163,30 +163,30 @@ export const printServerOverviewPng = (
  * @param view 统计总览视图数据(全局趋势 + 各服务器维度摘要)
  * @param fileName 输出文件名
  */
-export const printAnalyticsPng = (
+export const printAnalyticsPng = async (
     view: IAnalyticsViewData,
     fileName: string,
-): string => {
+): Promise<string> => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
-    const outputPath = new AnalyticsCanvas(view, fileName).render();
+    const outputPath = await new AnalyticsCanvas(view, fileName).render();
 
     return outputPath;
 };
 
-export const printMapDetailPng = (
+export const printMapDetailPng = async (
     map: IMapDataItem,
     servers: OnlineServerItem[],
     fileName: string,
-): string => {
+): Promise<string> => {
     if (!fs.existsSync(OUTPUT_FOLDER)) {
         fs.mkdirSync(OUTPUT_FOLDER);
     }
 
     const mapStartedAtMap = buildMapStartedAtMap(servers);
-    const outputPath = new MapDetailCanvas(
+    const outputPath = await new MapDetailCanvas(
         map,
         servers,
         fileName,

@@ -12,6 +12,9 @@ import { WhereisCanvas } from '../../commands/servers/canvas/whereisCanvas';
 import { ServerOverviewCanvas } from '../../commands/servers/canvas/serverOverviewCanvas';
 import { AnalyticsCanvas } from '../../commands/servers/canvas/analyticsCanvas';
 import { CheckCanvas } from '../../commands/check/checkCanvas';
+import { AiCanvas } from '../../commands/ai/aiCanvas';
+import { HelpCanvas } from '../../commands/help/canvas/helpCanvas';
+import { WelcomeCanvas } from '../../notices/canvas/welcomeCanvas';
 import { aggregateOverview } from '../../commands/servers/utils/overview';
 import { OUTPUT_FOLDER } from '../../commands/servers/types/constants';
 
@@ -111,7 +114,7 @@ export const scenarios: ImageScenario[] = [
             const { servers, maps } = readJson<any>('servers/maps.json');
 
             const canvas = new MapsCanvas(servers, maps, fileName);
-            const outPath = canvas.render();
+            const outPath = await canvas.render();
             return path.resolve(outPath);
         },
     },
@@ -125,7 +128,7 @@ export const scenarios: ImageScenario[] = [
             const { map, servers } = readJson<any>('servers/mapDetail.json');
 
             const canvas = new MapDetailCanvas(map, servers, fileName);
-            const outPath = canvas.render();
+            const outPath = await canvas.render();
             return path.resolve(outPath);
         },
     },
@@ -151,7 +154,7 @@ export const scenarios: ImageScenario[] = [
                 data.moderators,
                 data.moderatorBadge,
             );
-            const outPath = canvas.render();
+            const outPath = await canvas.render();
             return path.resolve(outPath);
         },
     },
@@ -175,7 +178,7 @@ export const scenarios: ImageScenario[] = [
                 fileName,
                 new Map(),
             );
-            const outPath = canvas.render();
+            const outPath = await canvas.render();
             return path.resolve(outPath);
         },
     },
@@ -194,7 +197,7 @@ export const scenarios: ImageScenario[] = [
                 data.count,
                 fileName,
             );
-            const outPath = canvas.render();
+            const outPath = await canvas.render();
             return path.resolve(outPath);
         },
     },
@@ -220,7 +223,7 @@ export const scenarios: ImageScenario[] = [
                 latencyMap,
                 historicalServers,
             );
-            const outPath = canvas.render();
+            const outPath = await canvas.render();
             return path.resolve(outPath);
         },
     },
@@ -234,7 +237,7 @@ export const scenarios: ImageScenario[] = [
             const view = readJson<any>('servers/analytics.json');
 
             const canvas = new AnalyticsCanvas(view, fileName);
-            const outPath = canvas.render();
+            const outPath = await canvas.render();
             return path.resolve(outPath);
         },
     },
@@ -248,7 +251,59 @@ export const scenarios: ImageScenario[] = [
             const report = readJson<any>('check/check.json');
 
             const canvas = new CheckCanvas(report, fileName);
-            const outPath = canvas.render();
+            const outPath = await canvas.render();
+            return path.resolve(outPath);
+        },
+    },
+    {
+        id: 'ai-basic',
+        name: 'AI answer basic render',
+        run: async () => {
+            ensureOutDir();
+            const fileName = `reg-ai-${Date.now()}.png`;
+
+            const canvas = new AiCanvas(
+                '测试问题：如何加入服务器？',
+                '这是一段回答内容。\n包含多行文本用于验证换行与自适应高度。\nLine three with english words.',
+                fileName,
+            );
+            const outPath = await canvas.render();
+            return path.resolve(outPath);
+        },
+    },
+    {
+        id: 'help-basic',
+        name: 'Help list basic render',
+        run: async () => {
+            const outDir = ensureOutDir();
+            const fileName = `reg-help-${Date.now()}.png`;
+
+            const canvas = new HelpCanvas(
+                {
+                    mode: 'list',
+                    prefix: '#',
+                    items: [
+                        { name: 'servers', alias: 's', description: '查询在线服务器列表' },
+                        { name: 'players', alias: 'p', description: '查询玩家分布' },
+                        { name: 'tdoll', alias: 'td', description: '查询 T-Doll 数据' },
+                    ],
+                },
+                fileName,
+            );
+            // help 的 render() 目前返回 void，手动构造输出路径(迁移后返回 string 亦兼容)
+            await canvas.render();
+            return path.resolve(path.join(outDir, fileName));
+        },
+    },
+    {
+        id: 'welcome-basic',
+        name: 'Welcome notice basic render',
+        run: async () => {
+            ensureOutDir();
+            const fileName = `reg-welcome-${Date.now()}.png`;
+
+            const canvas = new WelcomeCanvas(fileName);
+            const outPath = await canvas.render();
             return path.resolve(outPath);
         },
     },
