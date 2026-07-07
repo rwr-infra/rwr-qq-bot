@@ -15,7 +15,7 @@ import {
 import { ITDollDataItem } from '../types/types';
 
 /** 多结果时的可操作提示尾行 */
-export const MULTI_RESULT_TAIL = '回复 #td <完整名称> 查看详情与皮肤';
+export const MULTI_RESULT_TAIL = '输入 #ts <武器ID> 查看详情与皮肤';
 
 /** 单结果时的可复制信息尾行 */
 export const buildSingleResultTail = (tdoll: ITDollDataItem): string =>
