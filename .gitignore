@@ -35,3 +35,8 @@ test-data/
 /.agent-shell/
 .codegraph/
 .cursor/
+.agents/
+.augment/
+.factory/
+.goose/
+.trae/
