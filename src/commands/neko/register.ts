@@ -2,6 +2,7 @@ import _ from 'lodash';
 import { logger } from "../../utils/logger";
 import { IRegister } from "../../types";
 import { getNekoImgs } from './utils';
+import { cqImageUrl } from '../../utils/cqCode';
 
 const COMMAND_NAME = 'neko';
 
@@ -24,7 +25,7 @@ export const NekoCommandRegister: IRegister = {
         let descText = '';
         descText += `作者: ${firstImg.artist_name}\n`;
         descText += `来源: ${firstImg.source_url}\n`;
-        descText += `[CQ:image,file=${firstImg.url}]`;
+        descText += cqImageUrl(firstImg.url);
 
         await ctx.reply(descText);
     }

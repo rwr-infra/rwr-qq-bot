@@ -21,7 +21,8 @@ import {
     getFirstCommand,
     parseIgnoreSpace,
 } from '../utils/cmd';
-import { checkTimeIntervalValid, getStaticHttpPath } from '../utils/cmdreq';
+import { checkTimeIntervalValid } from '../utils/cmdreq';
+import { cqImageFile } from '../utils/cqCode';
 import { FuckCommandRegister } from './fuck/register';
 import { SetuCommandRegister } from './setu/register';
 import { TouhouCommandRegister } from './touhou/register';
@@ -202,10 +203,7 @@ export const msgHandler = async (env: GlobalEnv, event: MessageEvent) => {
                 );
             }
             await new HelpCanvas(model, outputFile).render();
-            const cqOutput = `[CQ:image,file=${getStaticHttpPath(
-                env,
-                outputFile,
-            )},cache=0,c=8]`;
+            const cqOutput = cqImageFile(env, outputFile);
             await quickReply(event, cqOutput);
         } catch (err) {
             logger.error('[help] render failed', err);

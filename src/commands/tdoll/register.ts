@@ -3,10 +3,8 @@ import { TDollSvc } from './services/tdoll.service';
 import { TDollSkinSvc } from './services/tdollskin.service';
 import { logger } from '../../utils/logger';
 import { TDOLL_SKIN_NOT_FOUND_MSG } from './types/constants';
-import {
-    buildUserScopedPngName,
-    getStaticHttpPath,
-} from '../../utils/cmdreq';
+import { buildUserScopedPngName } from '../../utils/cmdreq';
+import { cqImageFile } from '../../utils/cqCode';
 import { CommandHelper } from './utils/commandHelper';
 import { printTDollDetailPng } from './utils/utils';
 
@@ -89,10 +87,7 @@ const createTDollSkinCommand = (name: string, alias: string): IRegister => {
                 fileName
             );
 
-            const replyText = `[CQ:image,file=${getStaticHttpPath(
-                ctx.env,
-                fileName
-            )},cache=0,c=8]`;
+            const replyText = cqImageFile(ctx.env, fileName);
 
             await ctx.reply(replyText);
         } catch (error) {

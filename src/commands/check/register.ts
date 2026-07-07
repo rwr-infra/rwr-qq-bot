@@ -1,6 +1,6 @@
 import { CanvasImgService } from '../../services/canvasImg.service';
 import type { GlobalEnv, IRegister } from '../../types';
-import { getStaticHttpPath } from '../../utils/cmdreq';
+import { cqImageFile } from '../../utils/cqCode';
 import { logger } from '../../utils/logger';
 import { CheckCanvas } from './checkCanvas';
 import { buildCheckReport } from './utils';
@@ -27,7 +27,7 @@ export const CheckCommandRegister: IRegister = {
             new CheckCanvas(report, outputFile).render();
 
             await ctx.reply(
-                `[CQ:image,file=${getStaticHttpPath(ctx.env, outputFile)},cache=0,c=8]`,
+                cqImageFile(ctx.env, outputFile),
             );
         } catch (error) {
             logger.error('[check] command failed', error);

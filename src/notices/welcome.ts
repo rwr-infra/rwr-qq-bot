@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import { NoticeExecCtx } from '../types';
 import { logger } from '../utils/logger';
-import { getStaticHttpPath } from '../utils/cmdreq';
+import { cqImageFile } from '../utils/cqCode';
 import { CanvasImgService } from '../services/canvasImg.service';
 import { HelpCanvas } from '../commands/help/canvas/helpCanvas';
 
@@ -73,7 +73,7 @@ export const welcomeNewMember = async (ctx: NoticeExecCtx) => {
                 outputFile,
             ).render();
 
-            const cqImage = `[CQ:image,file=${getStaticHttpPath(ctx.env, outputFile)},cache=0,c=8]`;
+            const cqImage = cqImageFile(ctx.env, outputFile);
             const finalMsg = template.replace('{{WELCOME_IMAGE}}', cqImage);
             await ctx.reply(finalMsg);
         } catch (err) {

@@ -1,6 +1,6 @@
 import { logger } from '../../utils/logger';
 import { GlobalEnv, MsgExecCtx, IRegister } from '../../types';
-import { getStaticHttpPath } from '../../utils/cmdreq';
+import { cqImageFile, cqImageUrl } from '../../utils/cqCode';
 import {
     printAnalyticsPng,
     printMapPng,
@@ -78,10 +78,7 @@ async function generateServerReply(
     serverList: any[],
     outputFile: string,
 ): Promise<string> {
-    let cqOutput = `[CQ:image,file=${getStaticHttpPath(
-        ctx.env,
-        outputFile,
-    )},cache=0,c=8]`;
+    let cqOutput = cqImageFile(ctx.env, outputFile);
 
     if (serverList.length === 0 && ctx.env.SERVERS_FALLBACK_URL) {
         cqOutput += `\n检测到当前服务器列表为空, 请尝试使用备用查询地址: ${ctx.env.SERVERS_FALLBACK_URL}`;
@@ -379,10 +376,10 @@ export const MapsCommandRegister: IRegister = {
                     result.map.id,
                 );
 
-                let reply = `[CQ:image,file=${getStaticHttpPath(ctx.env, MAP_DETAIL_OUTPUT_FILE)},cache=0,c=8]`;
+                let reply = cqImageFile(ctx.env, MAP_DETAIL_OUTPUT_FILE);
 
                 if (mapImageUrl) {
-                    reply += `\n[CQ:image,file=${mapImageUrl},cache=0,c=8]`;
+                    reply += `\n${cqImageUrl(mapImageUrl, { cache: 0, c: 8 })}`;
                 }
 
                 await ctx.reply(reply);
@@ -448,10 +445,7 @@ export const AnalyticsCommandRegister: IRegister = {
                 return { serverList: [], outputFile: ANALYTICS_OVERVIEW_OUTPUT_FILE };
             },
             buildReply: async (apiResult) =>
-                `[CQ:image,file=${getStaticHttpPath(
-                    ctx.env,
-                    apiResult.outputFile,
-                )},cache=0,c=8]`,
+                cqImageFile(ctx.env, apiResult.outputFile),
             firstRequesterMessage: '正在生成统计总览, 请稍后...',
             pendingMessage: '统计总览正在生成中，请稍后...',
             failureMessage: '生成统计总览失败，请稍后重试',

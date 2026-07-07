@@ -2,6 +2,7 @@ import _ from 'lodash';
 import { logger } from "../../utils/logger";
 import { IRegister } from "../../types";
 import { getImgInfo } from './utils';
+import { cqImageUrl } from '../../utils/cqCode';
 
 const COMMAND_NAME = 'waifu';
 
@@ -24,7 +25,7 @@ export const WaifuCommandRegister: IRegister = {
         let descText = '';
 
         descText += `来源: ${firstImg.source}`;
-        descText += `[CQ:image,file=${firstImg.url}]`;
+        descText += cqImageUrl(firstImg.url);
 
         await ctx.reply(descText);
     }
