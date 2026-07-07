@@ -1,6 +1,3 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { logger } from '../../../utils/logger';
 import {
     IAnalysisData,
     IServerDetailItem,
@@ -11,13 +8,13 @@ import {
 import {
     ANALYSIS_DATA_FILE,
     ANALYSIS_HOURS_DATA_FILE,
-    OUTPUT_FOLDER,
 } from '../types/constants';
 import {
     countServersMaxPlayers,
     countTotalPlayers,
     getMapShortName,
 } from './utils';
+import { readAnalyticsJson } from './analyticsStore';
 
 /**
  * 聚合实时快照统计信息
@@ -75,24 +72,11 @@ export const aggregateOverview = (
  * @returns 解析后的统计数组, 失败为 null
  */
 const readAnalysisFile = (fileName: string): IAnalysisData[] | null => {
-    const filePath = path.join(process.cwd(), OUTPUT_FOLDER, `./${fileName}`);
-
-    if (!fs.existsSync(filePath)) {
+    const parsed = readAnalyticsJson<IAnalysisData[]>(fileName);
+    if (!Array.isArray(parsed)) {
         return null;
     }
-
-    try {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const parsed = JSON.parse(content) as IAnalysisData[];
-        if (!Array.isArray(parsed)) {
-            return null;
-        }
-        return parsed;
-    } catch (e) {
-        logger.error('> readAnalysisFile error', fileName);
-        logger.error(e);
-        return null;
-    }
+    return parsed;
 };
 
 const maxCount = (data: IAnalysisData[] | null): number | null => {
