@@ -1,28 +1,25 @@
-import * as fs from 'node:fs/promises';
-import { AsyncCacheService } from '../../../services/asyncCache.service';
+import { JsonFileCacheService } from '../../../services/jsonFileCache.service';
 import { ITDollSkinDataItem } from '../types/types';
 
-export class TDollSkinService extends AsyncCacheService<
+export class TDollSkinService extends JsonFileCacheService<
     Record<string, ITDollSkinDataItem>
 > {
-    cacheTime = 24 * 60 * 60;
-
     lastRaw = '';
     lastData = {} as Record<string, ITDollSkinDataItem>;
 
+    constructor() {
+        super(24 * 60 * 60);
+    }
+
     async fetchData() {
-        const raw = await fs.readFile(
-            process.env.TDOLL_SKIN_DATA_FILE as string,
-            'utf-8'
-        );
+        const raw = await this.readRaw();
 
         if (raw !== this.lastRaw) {
-            const nextData = JSON.parse(raw) as Record<
+            this.lastData = JSON.parse(raw) as Record<
                 string,
                 ITDollSkinDataItem
             >;
             this.lastRaw = raw;
-            this.lastData = nextData;
         }
 
         return this.lastData;

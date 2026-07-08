@@ -1,4 +1,4 @@
-import { IRegister } from '../../types';
+import { GlobalEnv, IRegister } from '../../types';
 import { TDollSvc } from './services/tdoll.service';
 import { TDollSkinSvc } from './services/tdollskin.service';
 import { logger } from '../../utils/logger';
@@ -7,6 +7,15 @@ import { buildUserScopedPngName } from '../../utils/cmdreq';
 import { cqImageFile } from '../../utils/cqCode';
 import { CommandHelper } from './utils/commandHelper';
 import { printTDollDetailPng } from './utils/utils';
+
+/**
+ * 注入两个数据源的文件路径。环境变量名(TDOLL_DATA_FILE / TDOLL_SKIN_DATA_FILE)
+ * 保持不变，仅把读取从 fetch 时刻的 process.env 前移到 init(env) 注入。
+ */
+const initTDollServices = async (env: GlobalEnv): Promise<void> => {
+    TDollSvc.configure(env.TDOLL_DATA_FILE);
+    TDollSkinSvc.configure(env.TDOLL_SKIN_DATA_FILE);
+};
 
 const createTDollCommand = (name: string, alias: string): IRegister => {
     const getErrorMessage = () => `参数不正确, 示例:
@@ -44,6 +53,7 @@ const createTDollCommand = (name: string, alias: string): IRegister => {
         ],
         timesInterval: 10,
         isAdmin: false,
+        init: initTDollServices,
         exec
     };
 };
@@ -103,6 +113,7 @@ const createTDollSkinCommand = (name: string, alias: string): IRegister => {
         hint: [`查询指定 ID 武器皮肤数据: #${name} 2`],
         timesInterval: 10,
         isAdmin: false,
+        init: initTDollServices,
         exec
     };
 };
