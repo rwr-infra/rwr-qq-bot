@@ -72,7 +72,10 @@ export const allCommands: IRegister[] = [
  * initCommands 与 msgHandler 共用，避免两处各自维护同一过滤逻辑。
  */
 export const resolveActiveCommands = (env: GlobalEnv): IRegister[] => {
-    const activeCommands = env.ACTIVE_COMMANDS
+    // 用 ?.length: 空数组([])也视为"未限制"→ 启用全部命令。
+    // loadEnv 会把未设置的 ACTIVE_COMMANDS 解析为 []，若仅用真值判断会因
+    // [] 为真而生成空 Set，从而禁用所有命令，与"留空启用所有"的约定相悖。
+    const activeCommands = env.ACTIVE_COMMANDS?.length
         ? new Set(env.ACTIVE_COMMANDS)
         : null;
     return allCommands.filter(

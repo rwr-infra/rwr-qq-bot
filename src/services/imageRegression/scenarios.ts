@@ -275,7 +275,7 @@ export const scenarios: ImageScenario[] = [
         id: 'help-basic',
         name: 'Help list basic render',
         run: async () => {
-            const outDir = ensureOutDir();
+            ensureOutDir();
             const fileName = `reg-help-${Date.now()}.png`;
 
             const canvas = new HelpCanvas(
@@ -290,9 +290,8 @@ export const scenarios: ImageScenario[] = [
                 },
                 fileName,
             );
-            // help 的 render() 目前返回 void，手动构造输出路径(迁移后返回 string 亦兼容)
-            await canvas.render();
-            return path.resolve(path.join(outDir, fileName));
+            const outPath = await canvas.render();
+            return path.resolve(outPath);
         },
     },
     {

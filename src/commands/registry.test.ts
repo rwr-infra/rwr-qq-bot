@@ -17,8 +17,14 @@ describe('command registry', () => {
         expect(typeof help?.exec).toBe('function');
     });
 
-    it('resolveActiveCommands returns all when ACTIVE_COMMANDS is empty', () => {
+    it('resolveActiveCommands returns all when ACTIVE_COMMANDS is undefined', () => {
         const env = {} as GlobalEnv;
+        expect(resolveActiveCommands(env)).toHaveLength(allCommands.length);
+    });
+
+    it('resolveActiveCommands returns all when ACTIVE_COMMANDS is an empty array', () => {
+        // loadEnv 把未设置的变量解析为 []; 空数组应等同"未限制"，启用全部
+        const env = { ACTIVE_COMMANDS: [] } as unknown as GlobalEnv;
         expect(resolveActiveCommands(env)).toHaveLength(allCommands.length);
     });
 

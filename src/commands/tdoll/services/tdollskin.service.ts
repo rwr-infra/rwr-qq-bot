@@ -11,7 +11,7 @@ export class TDollSkinService extends JsonFileCacheService<
         super(24 * 60 * 60);
     }
 
-    async fetchData() {
+    async fetchData(): Promise<Record<string, ITDollSkinDataItem>> {
         const raw = await this.readRaw();
 
         if (raw !== this.lastRaw) {

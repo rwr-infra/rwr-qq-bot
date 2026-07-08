@@ -263,13 +263,17 @@ export class GroupCommandCoordinator {
         timeoutMs?: number,
     ): Promise<ApiResult> {
         const timeout = timeoutMs ?? this.requestTimeout;
+        let timer: ReturnType<typeof setTimeout>;
         const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => {
+            timer = setTimeout(() => {
                 reject(new Error('Request timeout'));
             }, timeout);
         });
 
-        return Promise.race([pendingRequest.promise, timeoutPromise]);
+        // 请求先结算时清除定时器，避免遗留悬挂 timer(及其后续未处理的拒绝)
+        return Promise.race([pendingRequest.promise, timeoutPromise]).finally(
+            () => clearTimeout(timer),
+        );
     }
 
     /**

@@ -68,9 +68,8 @@ class FsCanvasFileWriter implements CanvasFileWriter {
             throw wrapped;
         }
 
-        if (!fs.existsSync(OUTPUT_FOLDER)) {
-            fs.mkdirSync(OUTPUT_FOLDER);
-        }
+        // recursive: 幂等建目录，并发渲染时不会因 EEXIST 抛错
+        fs.mkdirSync(OUTPUT_FOLDER, { recursive: true });
 
         const outputPath = path.join(
             process.cwd(),
