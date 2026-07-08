@@ -2,6 +2,7 @@ import _ from 'lodash';
 import { logger } from "../../utils/logger";
 import { IRegister } from "../../types";
 import { getImgInfo } from './utils';
+import { cqImageUrl } from '../../utils/cqCode';
 
 export const TouhouCommandRegister: IRegister = {
     name: 'touhou',
@@ -18,7 +19,7 @@ export const TouhouCommandRegister: IRegister = {
 
         descText += `作者:${res.author}\n`;
         descText += `来源:${res.url}\n`;
-        descText += `[CQ:image,file=${res.url}]`;
+        descText += cqImageUrl(res.url);
 
         await ctx.reply(descText);
     }
