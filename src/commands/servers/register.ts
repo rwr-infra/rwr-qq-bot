@@ -36,9 +36,9 @@ import { MapsDataService } from './services/mapsData.service';
 import { MapImageService } from './services/mapImage.service';
 import { CanvasImgService } from '../../services/canvasImg.service';
 import {
-    serverCommandCache,
+    groupCommandCoordinator,
     ApiResult,
-} from '../../services/serverCommandCache.service';
+} from '../../services/groupCommandCoordinator.service';
 import { serverHistoryCache } from '../../services/serverHistoryCache.service';
 
 // ============================================================================
@@ -111,7 +111,7 @@ async function executeSharedGroupCommand(
         failureMessage?: string;
     },
 ): Promise<void> {
-    const result = await serverCommandCache.executeWithGroupCD(
+    const result = await groupCommandCoordinator.executeWithGroupCD(
         ctx.event.group_id,
         options.command,
         options.params,
@@ -131,44 +131,45 @@ async function executeSharedGroupCommand(
         return;
     }
 
-    if (result.isFirstRequester && options.firstRequesterMessage) {
+    // 等待者: 已加入合并队列，由发起者统一批量 AT 回复，此处不再各自回复
+    // （否则每个等待者都会再发一条，造成重复消息）
+    if (!result.isFirstRequester) {
+        if (result.needWait && options.pendingMessage) {
+            await ctx.reply(options.pendingMessage);
+        }
+        return;
+    }
+
+    // 发起者: 执行请求，完成后统一回复并批量 AT 所有等待者
+    if (options.firstRequesterMessage) {
         await ctx.reply(options.firstRequesterMessage);
     }
 
-    if (result.needWait && !result.isFirstRequester && options.pendingMessage) {
-        await ctx.reply(options.pendingMessage);
-    }
-
-    try {
-        const apiResult = await serverCommandCache.waitForResult(
-            result.pendingRequest,
-            30000,
-        );
-        const reply = await options.buildReply(apiResult);
-        const allWaiters = serverCommandCache.getAndClearWaiters(
+    const replyToWaiters = async (message: string): Promise<void> => {
+        const waiters = groupCommandCoordinator.getAndClearWaiters(
             ctx.event.group_id,
             options.command,
             options.params,
         );
+        await ctx.reply(
+            waiters.length > 1
+                ? groupCommandCoordinator.generateAtMessage(waiters, message)
+                : message,
+        );
+    };
 
-        if (allWaiters.length === 0) {
-            return;
-        }
-
-        if (allWaiters.length > 1) {
-            await ctx.reply(
-                serverCommandCache.generateAtMessage(allWaiters, reply),
-            );
-            return;
-        }
-
-        await ctx.reply(reply);
+    try {
+        const apiResult = await groupCommandCoordinator.waitForResult(
+            result.pendingRequest,
+        );
+        const reply = await options.buildReply(apiResult);
+        await replyToWaiters(reply);
     } catch (error) {
         logger.error(
             `[${options.command}] Shared command execute failed:`,
             error,
         );
-        await ctx.reply(options.failureMessage || '请求失败，请稍后重试');
+        await replyToWaiters(options.failureMessage || '请求失败，请稍后重试');
     }
 }
 
