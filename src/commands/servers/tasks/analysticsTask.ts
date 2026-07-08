@@ -1,11 +1,10 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { CronJob } from 'cron';
 import { GlobalEnv } from '../../../types';
 import { countTotalPlayers, queryAllServers } from '../utils/utils';
 import { logger } from '../../../utils/logger';
 import { IAnalysisData } from '../types/types';
-import { ANALYSIS_DATA_FILE, OUTPUT_FOLDER } from '../types/constants';
+import { ANALYSIS_DATA_FILE } from '../types/constants';
+import { readAnalyticsJson, writeAnalyticsJson } from '../utils/analyticsStore';
 
 export class AnalysticsTask {
     // 10 分钟更新一次
@@ -17,19 +16,8 @@ export class AnalysticsTask {
     static isUpdating = false;
 
     static write(data: IAnalysisData) {
-        const folderTarget = path.join(process.cwd(), OUTPUT_FOLDER);
-        const writeTarget = path.join(folderTarget, `./${ANALYSIS_DATA_FILE}`);
-        logger.info('AnalysticsTask::write() target:', writeTarget);
-        if (!fs.existsSync(writeTarget)) {
-            if (!fs.existsSync(folderTarget)) {
-                fs.mkdirSync(folderTarget);
-            }
-            fs.writeFileSync(writeTarget, JSON.stringify([data]), 'utf-8');
-            return;
-        }
-        const recordValue = JSON.parse(
-            fs.readFileSync(writeTarget, 'utf-8')
-        ) as IAnalysisData[];
+        const recordValue =
+            readAnalyticsJson<IAnalysisData[]>(ANALYSIS_DATA_FILE) ?? [];
 
         // 统计最近 7 天 数据, 检查日期是否已经存在
         const isFoundTodayValue = recordValue.find((v) => v.date === data.date);
@@ -47,12 +35,7 @@ export class AnalysticsTask {
             }
         }
 
-        // 更新写入
-        try {
-            fs.writeFileSync(writeTarget, JSON.stringify(recordValue), 'utf-8');
-        } catch (e: any) {
-            logger.error('AnalysticsTask write error', e);
-        }
+        writeAnalyticsJson(ANALYSIS_DATA_FILE, recordValue);
     }
 
     static async updateCount(env: GlobalEnv) {
@@ -85,6 +68,8 @@ export class AnalysticsTask {
         if (this.isRunning) {
             return;
         }
+        // 立刻置位, 保证 start() 幂等(避免首个 tick 前重复 start 注册多个 CronJob)
+        this.isRunning = true;
         // 立即调用一次
         AnalysticsTask.updateCount(env);
 
