@@ -1,4 +1,4 @@
-import { BaseCanvas } from '../../services/baseCanvas';
+import { BaseCanvas, CanvasSize } from '../../services/baseCanvas';
 import { createCanvas, type Canvas2DContext } from '../../services/canvasBackend';
 import { buildCanvasFont } from '../../services/canvasFonts';
 
@@ -85,11 +85,6 @@ export class AiCanvas extends BaseCanvas {
         this.renderHeight = titleHeight + subtitleHeight + this.rectHeight + footerHeight + OUTER_PADDING * 3;
     }
 
-    private renderLayout(context: Canvas2DContext, width: number, height: number) {
-        context.fillStyle = '#451a03';
-        context.fillRect(0, 0, width, height);
-    }
-
     private renderTitle(context: Canvas2DContext) {
         context.font = TITLE_FONT;
         context.textAlign = 'left';
@@ -149,22 +144,25 @@ export class AiCanvas extends BaseCanvas {
         }
     }
 
-    render(): string {
-        this.record();
+    protected measure(): CanvasSize {
         this.measureRender();
+        return { width: CANVAS_WIDTH, height: this.renderHeight };
+    }
 
-        const canvas = createCanvas(CANVAS_WIDTH, this.renderHeight);
-        const context = canvas.getContext('2d');
+    protected getFileName(): string {
+        return this.fileName;
+    }
 
-        this.renderLayout(context, CANVAS_WIDTH, this.renderHeight);
-        this.renderBgImg(context, CANVAS_WIDTH, this.renderHeight);
+    protected getBgColor(): string {
+        return '#451a03';
+    }
+
+    protected paint(context: Canvas2DContext): number {
         this.renderTitle(context);
         this.renderSubtitle(context);
         this.renderRect(context);
         this.renderSectionHeader(context, '[回答内容]');
         this.renderContent(context);
-        this.renderFooter(context);
-
-        return this.writeFile(canvas, this.fileName);
+        return this.renderStartY;
     }
 }

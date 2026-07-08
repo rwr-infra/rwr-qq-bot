@@ -1,14 +1,11 @@
-import { BaseCanvas } from '../../../services/baseCanvas';
+import { BaseCanvas, CanvasSize } from '../../../services/baseCanvas';
 import {
     Canvas2DContext,
     ImageLike,
-    createCanvas,
 } from '../../../services/canvasBackend';
 import { buildCanvasFont } from '../../../services/canvasFonts';
 import { drawSegments } from '../../../services/canvasHelpers';
 import { CANVAS_COLORS } from '../../../services/canvasTheme';
-import { asImageRenderError } from '../../../services/imageRenderErrors';
-import { logImageRenderError } from '../../../services/imageRenderLogger';
 import { ITDollDataItem, ITDollSkinDataItem } from '../types/types';
 import { loadSkinImageMap, loadTDollAvatarMap } from './assets';
 import {
@@ -41,6 +38,9 @@ export class TDollDetailCanvas extends BaseCanvas {
     private readonly tdoll?: ITDollDataItem;
     private readonly skinItems: SkinGridItem[];
     private readonly fileName: string;
+
+    private avatarMap: Map<string, ImageLike> = new Map();
+    private skinMap: Awaited<ReturnType<typeof loadSkinImageMap>> | null = null;
 
     constructor(
         query: string,
@@ -95,59 +95,55 @@ export class TDollDetailCanvas extends BaseCanvas {
         return y + SECTION_HEADER_H;
     }
 
-    async render(): Promise<string> {
-        try {
-            this.record();
+    protected async measure(): Promise<CanvasSize> {
+        const [avatarMap, skinMap] = await Promise.all([
+            this.tdoll
+                ? loadTDollAvatarMap([this.tdoll])
+                : Promise.resolve(new Map<string, ImageLike>()),
+            loadSkinImageMap(this.skinItems),
+        ]);
+        this.avatarMap = avatarMap;
+        this.skinMap = skinMap;
 
-            const [avatarMap, skinMap] = await Promise.all([
-                this.tdoll
-                    ? loadTDollAvatarMap([this.tdoll])
-                    : Promise.resolve(new Map<string, ImageLike>()),
-                loadSkinImageMap(this.skinItems),
-            ]);
+        const gridH = measureSkinGridHeight(this.skinItems.length);
+        const height =
+            PAD + TITLE_H + CARD_H + 16 + SECTION_HEADER_H + gridH + FOOTER_H;
 
-            const gridH = measureSkinGridHeight(this.skinItems.length);
-            const height =
-                PAD + TITLE_H + CARD_H + 16 + SECTION_HEADER_H + gridH + FOOTER_H;
+        return { width: WIDTH, height };
+    }
 
-            const canvas = createCanvas(WIDTH, height);
-            const ctx = canvas.getContext('2d');
+    protected getFileName(): string {
+        return this.fileName;
+    }
 
-            ctx.fillStyle = CANVAS_COLORS.BG;
-            ctx.fillRect(0, 0, WIDTH, height);
-            this.renderBgImg(ctx, WIDTH, height);
+    protected getBgColor(): string {
+        return CANVAS_COLORS.BG;
+    }
 
-            this.renderTitle(ctx);
+    protected getRenderScene(): string {
+        return 'tdollDetail:render';
+    }
 
-            let y = PAD + TITLE_H;
-            y = drawTDollCard(
-                ctx,
-                PAD,
-                y,
-                this.buildCardModelSafe(),
-                avatarMap,
-                SKIN_GRID_W,
-            );
+    protected getInputSummary(): string {
+        return `query=${this.query}, skins=${this.skinItems.length}`;
+    }
 
-            y = this.renderSectionHeader(ctx, y + 16);
-            drawSkinGrid(ctx, PAD, y, this.skinItems, skinMap);
+    protected paint(ctx: Canvas2DContext, size: CanvasSize): number {
+        this.renderTitle(ctx);
 
-            this.renderStartY = height - FOOTER_H;
-            this.renderFooter(ctx);
+        let y = PAD + TITLE_H;
+        y = drawTDollCard(
+            ctx,
+            PAD,
+            y,
+            this.buildCardModelSafe(),
+            this.avatarMap,
+            SKIN_GRID_W,
+        );
 
-            return this.writeFile(canvas, this.fileName);
-        } catch (err) {
-            const wrapped = asImageRenderError(err, {
-                code: 'IMAGE_RENDER_FAILED',
-                message: 'TDoll detail canvas render failed',
-                context: {
-                    scene: 'tdollDetail:render',
-                    fileName: this.fileName,
-                    inputSummary: `query=${this.query}, skins=${this.skinItems.length}`,
-                },
-            });
-            logImageRenderError(wrapped);
-            throw wrapped;
-        }
+        y = this.renderSectionHeader(ctx, y + 16);
+        drawSkinGrid(ctx, PAD, y, this.skinItems, this.skinMap!);
+
+        return size.height - FOOTER_H;
     }
 }

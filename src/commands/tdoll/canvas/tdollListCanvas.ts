@@ -1,13 +1,11 @@
-import { BaseCanvas } from '../../../services/baseCanvas';
-import { Canvas2DContext, createCanvas } from '../../../services/canvasBackend';
+import { BaseCanvas, CanvasSize } from '../../../services/baseCanvas';
+import { Canvas2DContext } from '../../../services/canvasBackend';
 import { buildCanvasFont } from '../../../services/canvasFonts';
 import {
     drawSegments,
     truncate,
 } from '../../../services/canvasHelpers';
 import { CANVAS_COLORS } from '../../../services/canvasTheme';
-import { asImageRenderError } from '../../../services/imageRenderErrors';
-import { logImageRenderError } from '../../../services/imageRenderLogger';
 import { ITDollDataItem } from '../types/types';
 import { loadTDollAvatarMap } from './assets';
 import {
@@ -31,6 +29,10 @@ export class TDollListCanvas extends BaseCanvas {
     private readonly query: string;
     private readonly tdolls: ITDollDataItem[];
     private readonly fileName: string;
+
+    private avatarMap: Awaited<ReturnType<typeof loadTDollAvatarMap>> | null =
+        null;
+    private cols = 1;
 
     constructor(query: string, tdolls: ITDollDataItem[], fileName: string) {
         super();
@@ -71,60 +73,51 @@ export class TDollListCanvas extends BaseCanvas {
         ]);
     }
 
-    async render(): Promise<string> {
-        try {
-            this.record();
+    protected async measure(): Promise<CanvasSize> {
+        this.avatarMap = await loadTDollAvatarMap(this.tdolls);
 
-            const imgMap = await loadTDollAvatarMap(this.tdolls);
+        const { cols, rows } = computeCardGridLayout(this.tdolls.length);
+        this.cols = cols;
+        const width = PAD * 2 + cols * CARD_W + (cols - 1) * CARD_GAP;
+        const height =
+            PAD + TITLE_H + rows * CARD_H + (rows - 1) * CARD_GAP + FOOTER_H;
 
-            const { cols, rows } = computeCardGridLayout(this.tdolls.length);
-            const width = PAD * 2 + cols * CARD_W + (cols - 1) * CARD_GAP;
-            const height =
-                PAD +
-                TITLE_H +
-                rows * CARD_H +
-                (rows - 1) * CARD_GAP +
-                FOOTER_H;
+        return { width, height };
+    }
 
-            const canvas = createCanvas(width, height);
-            const ctx = canvas.getContext('2d');
+    protected getFileName(): string {
+        return this.fileName;
+    }
 
-            ctx.fillStyle = CANVAS_COLORS.BG;
-            ctx.fillRect(0, 0, width, height);
-            this.renderBgImg(ctx, width, height);
+    protected getBgColor(): string {
+        return CANVAS_COLORS.BG;
+    }
 
-            this.renderTitle(ctx, width);
+    protected getRenderScene(): string {
+        return 'tdollList:render';
+    }
 
-            this.tdolls.forEach((tdoll, i) => {
-                const col = i % cols;
-                const row = Math.floor(i / cols);
-                const x = PAD + col * (CARD_W + CARD_GAP);
-                const y = PAD + TITLE_H + row * (CARD_H + CARD_GAP);
-                drawTDollCard(
-                    ctx,
-                    x,
-                    y,
-                    buildCardModel(tdoll, this.query),
-                    imgMap,
-                );
-            });
+    protected getInputSummary(): string {
+        return `query=${this.query}, count=${this.tdolls.length}`;
+    }
 
-            this.renderStartY = height - FOOTER_H;
-            this.renderFooter(ctx);
+    protected paint(ctx: Canvas2DContext, size: CanvasSize): number {
+        this.renderTitle(ctx, size.width);
 
-            return this.writeFile(canvas, this.fileName);
-        } catch (err) {
-            const wrapped = asImageRenderError(err, {
-                code: 'IMAGE_RENDER_FAILED',
-                message: 'TDoll list canvas render failed',
-                context: {
-                    scene: 'tdollList:render',
-                    fileName: this.fileName,
-                    inputSummary: `query=${this.query}, count=${this.tdolls.length}`,
-                },
-            });
-            logImageRenderError(wrapped);
-            throw wrapped;
-        }
+        this.tdolls.forEach((tdoll, i) => {
+            const col = i % this.cols;
+            const row = Math.floor(i / this.cols);
+            const x = PAD + col * (CARD_W + CARD_GAP);
+            const y = PAD + TITLE_H + row * (CARD_H + CARD_GAP);
+            drawTDollCard(
+                ctx,
+                x,
+                y,
+                buildCardModel(tdoll, this.query),
+                this.avatarMap!,
+            );
+        });
+
+        return size.height - FOOTER_H;
     }
 }

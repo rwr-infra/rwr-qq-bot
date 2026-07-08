@@ -38,7 +38,7 @@ export const AiCommandRegister: IRegister = {
 
         const fileName = `ai-${ctx.event.user_id}.png`;
         const canvas = new AiCanvas(query, answer, fileName);
-        canvas.render();
+        await canvas.render();
 
         const replyText = `[CQ:image,file=${getStaticHttpPath(ctx.env, fileName)},cache=0,c=8]`;
         await ctx.reply(replyText);
