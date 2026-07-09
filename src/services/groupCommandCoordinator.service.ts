@@ -1,10 +1,11 @@
 /**
- * ServerCommandCacheService - 服务器命令缓存服务（简化版）
+ * GroupCommandCoordinator - 群命令协调器
  *
+ * 注意: 这不是一个"缓存"——它从不跨调用缓存 API 结果，只协调并发请求。
  * 核心功能:
- * 1. 群级CD - 基于 groupId:command 的冷却时间
- * 2. 队列合并 - 相同参数请求自动合并，多个等待者加入队列
- * 3. 批量AT - 响应时自动AT所有等待的QQ号
+ * 1. 群级CD - 基于 groupId:command 的冷却时间（限流）
+ * 2. 队列合并 - 处理中的相同参数请求自动合并，多个等待者加入同一队列
+ * 3. 批量AT - 由发起者统一回复，一次性AT所有等待的QQ号
  * 4. 竞态安全 - 使用Promise和Map确保并发安全
  */
 
@@ -23,12 +24,8 @@ export interface PendingRequest {
     promise: Promise<ApiResult>;
     /** 请求开始时间 */
     startTime: number;
-    /** 请求是否已完成 */
+    /** 请求是否已完成（成功或失败）——用于防止合并进已结束的批次 */
     isCompleted: boolean;
-    /** 请求结果 */
-    result?: ApiResult;
-    /** 错误信息 */
-    error?: Error;
 }
 
 export interface ApiResult {
@@ -57,7 +54,7 @@ export interface ExecuteResult {
     remainingMs?: number;
 }
 
-export class ServerCommandCacheService {
+export class GroupCommandCoordinator {
     /** 待处理请求映射表: groupId:command:paramsHash -> PendingRequest */
     private pendingRequests = new Map<string, PendingRequest>();
 
@@ -65,14 +62,22 @@ export class ServerCommandCacheService {
     private groupCDMap = new Map<string, number>();
 
     /** 默认CD时间(毫秒) */
-    private readonly DEFAULT_CD: number = 5000;
+    private readonly defaultCD: number;
 
-    /** 请求超时时间(毫秒) */
-    private readonly REQUEST_TIMEOUT: number = 30000;
+    /** 等待结果的默认超时时间(毫秒) */
+    private readonly requestTimeout: number;
 
-    constructor(options?: { defaultCD?: number; requestTimeout?: number }) {
-        this.DEFAULT_CD = options?.defaultCD ?? 5000;
-        this.REQUEST_TIMEOUT = options?.requestTimeout ?? 30000;
+    /** 请求完成后清理 pending 记录的延迟(毫秒) */
+    private readonly cleanupDelay: number;
+
+    constructor(options?: {
+        defaultCD?: number;
+        requestTimeout?: number;
+        cleanupDelay?: number;
+    }) {
+        this.defaultCD = options?.defaultCD ?? 5000;
+        this.requestTimeout = options?.requestTimeout ?? 30000;
+        this.cleanupDelay = options?.cleanupDelay ?? 60000;
     }
 
     /**
@@ -122,7 +127,7 @@ export class ServerCommandCacheService {
         const cdKey = this.generateCDKey(groupId, command);
         const lastTime = this.groupCDMap.get(cdKey) || 0;
         const now = Date.now();
-        const cooldown = cdMs || this.DEFAULT_CD;
+        const cooldown = cdMs || this.defaultCD;
         const elapsed = now - lastTime;
 
         if (elapsed >= cooldown) {
@@ -160,14 +165,16 @@ export class ServerCommandCacheService {
         const cacheKey = this.generateCacheKey(groupId, command, params);
         const now = Date.now();
 
-        // 1. 检查是否有相同参数的请求正在处理
+        // 1. 检查是否有相同参数的请求"正在处理中"
+        //    已完成(isCompleted)的记录不再合并——避免加入已回复的批次，
+        //    改由后续的 CD 检查决定是冷却还是发起新请求。
         const pending = this.pendingRequests.get(cacheKey);
-        if (pending) {
+        if (pending && !pending.isCompleted) {
             // 加入等待队列
             if (!pending.qqList.includes(qqId)) {
                 pending.qqList.push(qqId);
                 logger.info(
-                    `[ServerCommandCache] QQ ${qqId} joined pending request ${cacheKey}, ` +
+                    `[GroupCommandCoordinator] QQ ${qqId} joined pending request ${cacheKey}, ` +
                         `total waiters: ${pending.qqList.length}`,
                 );
             }
@@ -198,42 +205,34 @@ export class ServerCommandCacheService {
 
         // 4. 创建新的请求
         logger.info(
-            `[ServerCommandCache] Creating new request ${cacheKey} for QQ ${qqId}`,
+            `[GroupCommandCoordinator] Creating new request ${cacheKey} for QQ ${qqId}`,
         );
 
-        let resolveFn: (value: ApiResult) => void;
-        let rejectFn: (reason: any) => void;
-
-        const promise = new Promise<ApiResult>((resolve, reject) => {
-            resolveFn = resolve;
-            rejectFn = reject;
-        });
-
-        // 执行API调用
+        // 执行API调用——requestPromise 即等待者最终 await 的 Promise
         const requestPromise = apiCall()
             .then((result) => {
-                const pending = this.pendingRequests.get(cacheKey);
-                if (pending) {
-                    pending.isCompleted = true;
-                    pending.result = result;
+                const current = this.pendingRequests.get(cacheKey);
+                if (current) {
+                    current.isCompleted = true;
                 }
-                resolveFn(result);
                 return result;
             })
             .catch((error) => {
-                const pending = this.pendingRequests.get(cacheKey);
-                if (pending) {
-                    pending.isCompleted = true;
-                    pending.error = error;
+                const current = this.pendingRequests.get(cacheKey);
+                if (current) {
+                    current.isCompleted = true;
                 }
-                rejectFn(error);
                 throw error;
             })
             .finally(() => {
-                // 延迟清理
+                // 延迟清理——仅当该 key 仍映射到本次的 pending 时才删除，
+                // 避免误删已被新请求覆盖的记录。
+                const completed = this.pendingRequests.get(cacheKey);
                 setTimeout(() => {
-                    this.pendingRequests.delete(cacheKey);
-                }, 60000);
+                    if (this.pendingRequests.get(cacheKey) === completed) {
+                        this.pendingRequests.delete(cacheKey);
+                    }
+                }, this.cleanupDelay);
             });
 
         const newPending: PendingRequest = {
@@ -261,19 +260,25 @@ export class ServerCommandCacheService {
      */
     async waitForResult(
         pendingRequest: PendingRequest,
-        timeoutMs: number = 30000,
+        timeoutMs?: number,
     ): Promise<ApiResult> {
+        const timeout = timeoutMs ?? this.requestTimeout;
+        let timer: ReturnType<typeof setTimeout>;
         const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => {
+            timer = setTimeout(() => {
                 reject(new Error('Request timeout'));
-            }, timeoutMs);
+            }, timeout);
         });
 
-        return Promise.race([pendingRequest.promise, timeoutPromise]);
+        // 请求先结算时清除定时器，避免遗留悬挂 timer(及其后续未处理的拒绝)
+        return Promise.race([pendingRequest.promise, timeoutPromise]).finally(
+            () => clearTimeout(timer),
+        );
     }
 
     /**
-     * 获取等待者列表并清理
+     * 获取等待者列表并清空队列。
+     * 仅由发起者在回复前调用一次，返回的列表包含发起者自身。
      */
     getAndClearWaiters(
         groupId: number,
@@ -285,8 +290,7 @@ export class ServerCommandCacheService {
         if (!pending) return [];
 
         const waiters = [...pending.qqList];
-        // 清理，保留第一个(发起者)
-        pending.qqList = pending.qqList.length > 0 ? [pending.qqList[0]] : [];
+        pending.qqList = [];
         return waiters;
     }
 
@@ -313,21 +317,22 @@ export class ServerCommandCacheService {
 }
 
 // 单例实例
-let serverCommandCacheInstance: ServerCommandCacheService | null = null;
+let groupCommandCoordinatorInstance: GroupCommandCoordinator | null = null;
 
-export function initServerCommandCache(options?: {
+export function initGroupCommandCoordinator(options?: {
     defaultCD?: number;
     requestTimeout?: number;
-}): ServerCommandCacheService {
-    if (!serverCommandCacheInstance) {
-        serverCommandCacheInstance = new ServerCommandCacheService(options);
+    cleanupDelay?: number;
+}): GroupCommandCoordinator {
+    if (!groupCommandCoordinatorInstance) {
+        groupCommandCoordinatorInstance = new GroupCommandCoordinator(options);
     }
-    return serverCommandCacheInstance;
+    return groupCommandCoordinatorInstance;
 }
 
-export function getServerCommandCache(): ServerCommandCacheService | null {
-    return serverCommandCacheInstance;
+export function getGroupCommandCoordinator(): GroupCommandCoordinator | null {
+    return groupCommandCoordinatorInstance;
 }
 
 // 默认导出单例
-export const serverCommandCache = new ServerCommandCacheService();
+export const groupCommandCoordinator = new GroupCommandCoordinator();

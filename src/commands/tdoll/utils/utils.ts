@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import { ITDollDataItem, ITDollSkinDataItem } from '../types/types';
 import {
     TDOLL_CATEGORY_CN_MAPPER,
@@ -8,16 +7,6 @@ import {
 import { TDollCategoryEnum } from '../types/enums';
 import { TDollListCanvas } from '../canvas/tdollListCanvas';
 import { TDollDetailCanvas } from '../canvas/tdollDetailCanvas';
-
-/**
- * Read tdoll data from file
- * @param filePath tdoll data file path
- * @returns tdoll data list
- */
-export const readTdollData = (filePath: string): ITDollDataItem[] => {
-    const jsonData = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(jsonData) as ITDollDataItem[];
-};
 
 export { replacedQueryMatch } from './query';
 
@@ -105,18 +94,6 @@ const findCategoryByQuery = (q: string): TDollCategoryEnum | undefined => {
     }
 
     return undefined;
-};
-
-/**
- * Read tdoll skin data from file
- * @param filePath tdoll data file path
- * @returns tdoll data list
- */
-export const readTdollSkinData = (
-    filePath: string
-): Record<string, ITDollSkinDataItem> => {
-    const jsonData = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(jsonData) as Record<string, ITDollSkinDataItem>;
 };
 
 export const printTDollListPng = (

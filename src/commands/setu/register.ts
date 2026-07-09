@@ -2,6 +2,7 @@ import _ from 'lodash';
 import { logger } from "../../utils/logger";
 import { IRegister } from "../../types";
 import { getImgInfo } from './utils';
+import { cqImageUrl } from '../../utils/cqCode';
 
 export const SetuCommandRegister: IRegister = {
     name: 'setu',
@@ -31,6 +32,6 @@ export const SetuCommandRegister: IRegister = {
 
         await ctx.reply(`${descText}`);
 
-        await ctx.reply(`[CQ:image,file=${firstData.urls.original},type=flash]`);
+        await ctx.reply(cqImageUrl(firstData.urls.original, { type: 'flash' }));
     }
 }

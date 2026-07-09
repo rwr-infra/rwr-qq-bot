@@ -2,6 +2,7 @@ import axios from 'axios';
 import { XMLParser } from 'fast-xml-parser';
 import type { Nullable } from '../../../types';
 import { logger } from '../../../utils/logger';
+import { cqImageUrl } from '../../../utils/cqCode';
 import type {
     Res,
     ResServerItem,
@@ -469,7 +470,7 @@ export const buildMapDetailReply = (
     reply += `共 ${servers.length} 个服务器正在运行此地图`;
 
     if (mapImageUrl) {
-        reply += `\n[CQ:image,file=${mapImageUrl},cache=0,c=8]`;
+        reply += `\n${cqImageUrl(mapImageUrl, { cache: 0, c: 8 })}`;
     }
 
     return reply;

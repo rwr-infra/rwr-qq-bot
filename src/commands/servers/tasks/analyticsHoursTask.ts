@@ -1,11 +1,10 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { CronJob } from 'cron';
 import { GlobalEnv } from '../../../types';
 import { countTotalPlayers, queryAllServers } from '../utils/utils';
 import { logger } from '../../../utils/logger';
 import { IAnalysisData } from '../types/types';
-import { ANALYSIS_HOURS_DATA_FILE, OUTPUT_FOLDER } from '../types/constants';
+import { ANALYSIS_HOURS_DATA_FILE } from '../types/constants';
+import { readAnalyticsJson, writeAnalyticsJson } from '../utils/analyticsStore';
 
 export class AnalysticsHoursTask {
     // 2 分钟更新一次
@@ -17,22 +16,8 @@ export class AnalysticsHoursTask {
     static isUpdating = false;
 
     static write(data: IAnalysisData) {
-        const folderTarget = path.join(process.cwd(), OUTPUT_FOLDER);
-        const writeTarget = path.join(
-            folderTarget,
-            `./${ANALYSIS_HOURS_DATA_FILE}`
-        );
-        logger.info('AnalysticsHoursTask::write() target:', writeTarget);
-        if (!fs.existsSync(writeTarget)) {
-            if (!fs.existsSync(folderTarget)) {
-                fs.mkdirSync(folderTarget);
-            }
-            fs.writeFileSync(writeTarget, JSON.stringify([data]), 'utf-8');
-            return;
-        }
-        const recordValue = JSON.parse(
-            fs.readFileSync(writeTarget, 'utf-8')
-        ) as IAnalysisData[];
+        const recordValue =
+            readAnalyticsJson<IAnalysisData[]>(ANALYSIS_HOURS_DATA_FILE) ?? [];
 
         let newRecordValue = recordValue;
         const lastValue =
@@ -52,16 +37,7 @@ export class AnalysticsHoursTask {
             newRecordValue = [...recordValue, data];
         }
 
-        // 更新写入
-        try {
-            fs.writeFileSync(
-                writeTarget,
-                JSON.stringify(newRecordValue),
-                'utf-8'
-            );
-        } catch (e: any) {
-            logger.error('AnalysticsHoursTask write error', e);
-        }
+        writeAnalyticsJson(ANALYSIS_HOURS_DATA_FILE, newRecordValue);
     }
 
     static async updateCount(env: GlobalEnv) {
@@ -98,6 +74,8 @@ export class AnalysticsHoursTask {
         if (this.isRunning) {
             return;
         }
+        // 立刻置位, 保证 start() 幂等(避免首个 tick 前重复 start 注册多个 CronJob)
+        this.isRunning = true;
         // 立即调用一次
         AnalysticsHoursTask.updateCount(env);
 

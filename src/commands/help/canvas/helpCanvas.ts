@@ -2,7 +2,7 @@ import {
     createCanvas,
     type Canvas2DContext,
 } from '../../../services/canvasBackend';
-import { BaseCanvas } from '../../../services/baseCanvas';
+import { BaseCanvas, CanvasSize } from '../../../services/baseCanvas';
 
 export type HelpCanvasModel =
     | {
@@ -91,7 +91,7 @@ export class HelpCanvas extends BaseCanvas {
         this.fileName = fileName;
     }
 
-    private measure(): void {
+    private prepareLayout(): void {
         const tmp = createCanvas(1, 1);
         const ctx = tmp.getContext('2d');
 
@@ -236,15 +236,6 @@ export class HelpCanvas extends BaseCanvas {
         this.renderHeight = this.boxY + this.boxHeight + footerHeight;
     }
 
-    private renderLayout(
-        context: Canvas2DContext,
-        width: number,
-        height: number,
-    ) {
-        context.fillStyle = '#451a03';
-        context.fillRect(0, 0, width, height);
-    }
-
     private renderHeader(context: Canvas2DContext) {
         const outerPaddingX = 20;
         const titleY = 16;
@@ -346,20 +337,23 @@ export class HelpCanvas extends BaseCanvas {
         this.renderStartY = this.boxY + this.boxHeight;
     }
 
-    render() {
-        this.record();
-        this.measure();
+    protected measure(): CanvasSize {
+        this.prepareLayout();
+        return { width: this.renderWidth, height: this.renderHeight };
+    }
 
-        const canvas = createCanvas(this.renderWidth, this.renderHeight);
-        const context = canvas.getContext('2d');
+    protected getFileName(): string {
+        return this.fileName;
+    }
 
-        this.renderLayout(context, this.renderWidth, this.renderHeight);
-        this.renderBgImg(context, this.renderWidth, this.renderHeight);
+    protected getBgColor(): string {
+        return '#451a03';
+    }
+
+    protected paint(context: Canvas2DContext): number {
         this.renderHeader(context);
         this.renderBox(context);
         this.renderContent(context);
-        this.renderFooter(context);
-
-        return super.writeFile(canvas, this.fileName);
+        return this.renderStartY;
     }
 }

@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { createCanvas, Canvas2DContext } from '../../../services/canvasBackend';
-import { BaseCanvas } from '../../../services/baseCanvas';
+import { BaseCanvas, CanvasSize } from '../../../services/baseCanvas';
 import { buildCanvasFont } from '../../../services/canvasFonts';
 import {
     roundRectPath,
@@ -689,17 +689,20 @@ export class AnalyticsCanvas extends BaseCanvas {
         ctx.textAlign = 'left';
     }
 
-    render() {
-        this.record();
+    protected measure(): CanvasSize {
         this.renderHeight = this.computeHeight();
+        return { width: WIDTH, height: this.renderHeight };
+    }
 
-        const canvas = createCanvas(WIDTH, this.renderHeight);
-        const ctx = canvas.getContext('2d');
+    protected getFileName(): string {
+        return this.fileName;
+    }
 
-        ctx.fillStyle = COLOR_BG;
-        ctx.fillRect(0, 0, WIDTH, this.renderHeight);
-        this.renderBgImg(ctx, WIDTH, this.renderHeight);
+    protected getBgColor(): string {
+        return COLOR_BG;
+    }
 
+    protected paint(ctx: Canvas2DContext): number {
         let y = PAD;
         y = this.renderTitle(ctx, y);
         y = this.renderKpiRow(ctx, y);
@@ -707,10 +710,6 @@ export class AnalyticsCanvas extends BaseCanvas {
         y = this.renderRankingSection(ctx, y);
         y = this.renderServerGridSection(ctx, y, '各服务器24h趋势', '24h');
         y = this.renderServerGridSection(ctx, y, '各服务器近7日趋势', '7d');
-
-        this.renderStartY = y;
-        this.renderFooter(ctx);
-
-        return super.writeFile(canvas, this.fileName);
+        return y;
     }
 }

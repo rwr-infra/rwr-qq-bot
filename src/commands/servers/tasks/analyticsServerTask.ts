@@ -1,20 +1,14 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { CronJob } from 'cron';
 import { GlobalEnv } from '../../../types';
 import { queryAllServers } from '../utils/utils';
 import { serverHistoryCache } from '../../../services/serverHistoryCache.service';
 import { logger } from '../../../utils/logger';
 import {
-    IServerAnalyticsRecord,
+    IServerAnalyticsFile,
     IServerAnalyticsHourlyData,
 } from '../types/types';
-import { ANALYSIS_SERVER_DATA_FILE, OUTPUT_FOLDER } from '../types/constants';
-
-export interface IServerAnalyticsConfig {
-    lastUpdateTime: number;
-    records: IServerAnalyticsRecord[];
-}
+import { ANALYSIS_SERVER_DATA_FILE } from '../types/constants';
+import { readAnalyticsJson, writeAnalyticsJson } from '../utils/analyticsStore';
 
 export class AnalysticsServerTask {
     static readonly timesInterval = '0 */2 * * * *';
@@ -36,26 +30,13 @@ export class AnalysticsServerTask {
             count: number;
         }>,
     ) {
-        const folderTarget = path.join(process.cwd(), OUTPUT_FOLDER);
-        const writeTarget = path.join(
-            folderTarget,
-            `./${ANALYSIS_SERVER_DATA_FILE}`,
-        );
-        logger.info('AnalysticsServerTask::write() target:', writeTarget);
-
-        let existingConfig: IServerAnalyticsConfig = {
-            lastUpdateTime: Date.now(),
-            records: [],
-        };
-
-        if (fs.existsSync(writeTarget)) {
-            const fileContent = fs.readFileSync(writeTarget, 'utf-8');
-            existingConfig = JSON.parse(fileContent) as IServerAnalyticsConfig;
-        }
-
-        if (!fs.existsSync(folderTarget)) {
-            fs.mkdirSync(folderTarget);
-        }
+        const existingConfig: IServerAnalyticsFile =
+            readAnalyticsJson<IServerAnalyticsFile>(
+                ANALYSIS_SERVER_DATA_FILE,
+            ) ?? {
+                lastUpdateTime: Date.now(),
+                records: [],
+            };
 
         for (const serverData of serverDataList) {
             let record = existingConfig.records.find(
@@ -122,15 +103,7 @@ export class AnalysticsServerTask {
 
         existingConfig.lastUpdateTime = Date.now();
 
-        try {
-            fs.writeFileSync(
-                writeTarget,
-                JSON.stringify(existingConfig),
-                'utf-8',
-            );
-        } catch (e: any) {
-            logger.error('AnalysticsServerTask write error', e);
-        }
+        writeAnalyticsJson(ANALYSIS_SERVER_DATA_FILE, existingConfig);
     }
 
     static async updateCount(env: GlobalEnv) {
@@ -176,6 +149,8 @@ export class AnalysticsServerTask {
         if (this.isRunning) {
             return;
         }
+        // 立刻置位, 保证 start() 幂等(避免首个 tick 前重复 start 注册多个 CronJob)
+        this.isRunning = true;
         AnalysticsServerTask.updateCount(env);
 
         AnalysticsServerTask.job = new CronJob(

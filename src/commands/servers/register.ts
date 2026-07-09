@@ -1,6 +1,6 @@
 import { logger } from '../../utils/logger';
 import { GlobalEnv, MsgExecCtx, IRegister } from '../../types';
-import { getStaticHttpPath } from '../../utils/cmdreq';
+import { cqImageFile, cqImageUrl } from '../../utils/cqCode';
 import {
     printAnalyticsPng,
     printMapPng,
@@ -36,9 +36,9 @@ import { MapsDataService } from './services/mapsData.service';
 import { MapImageService } from './services/mapImage.service';
 import { CanvasImgService } from '../../services/canvasImg.service';
 import {
-    serverCommandCache,
+    groupCommandCoordinator,
     ApiResult,
-} from '../../services/serverCommandCache.service';
+} from '../../services/groupCommandCoordinator.service';
 import { serverHistoryCache } from '../../services/serverHistoryCache.service';
 
 // ============================================================================
@@ -78,10 +78,7 @@ async function generateServerReply(
     serverList: any[],
     outputFile: string,
 ): Promise<string> {
-    let cqOutput = `[CQ:image,file=${getStaticHttpPath(
-        ctx.env,
-        outputFile,
-    )},cache=0,c=8]`;
+    let cqOutput = cqImageFile(ctx.env, outputFile);
 
     if (serverList.length === 0 && ctx.env.SERVERS_FALLBACK_URL) {
         cqOutput += `\n检测到当前服务器列表为空, 请尝试使用备用查询地址: ${ctx.env.SERVERS_FALLBACK_URL}`;
@@ -111,7 +108,7 @@ async function executeSharedGroupCommand(
         failureMessage?: string;
     },
 ): Promise<void> {
-    const result = await serverCommandCache.executeWithGroupCD(
+    const result = await groupCommandCoordinator.executeWithGroupCD(
         ctx.event.group_id,
         options.command,
         options.params,
@@ -131,44 +128,45 @@ async function executeSharedGroupCommand(
         return;
     }
 
-    if (result.isFirstRequester && options.firstRequesterMessage) {
+    // 等待者: 已加入合并队列，由发起者统一批量 AT 回复，此处不再各自回复
+    // （否则每个等待者都会再发一条，造成重复消息）
+    if (!result.isFirstRequester) {
+        if (result.needWait && options.pendingMessage) {
+            await ctx.reply(options.pendingMessage);
+        }
+        return;
+    }
+
+    // 发起者: 执行请求，完成后统一回复并批量 AT 所有等待者
+    if (options.firstRequesterMessage) {
         await ctx.reply(options.firstRequesterMessage);
     }
 
-    if (result.needWait && !result.isFirstRequester && options.pendingMessage) {
-        await ctx.reply(options.pendingMessage);
-    }
-
-    try {
-        const apiResult = await serverCommandCache.waitForResult(
-            result.pendingRequest,
-            30000,
-        );
-        const reply = await options.buildReply(apiResult);
-        const allWaiters = serverCommandCache.getAndClearWaiters(
+    const replyToWaiters = async (message: string): Promise<void> => {
+        const waiters = groupCommandCoordinator.getAndClearWaiters(
             ctx.event.group_id,
             options.command,
             options.params,
         );
+        await ctx.reply(
+            waiters.length > 1
+                ? groupCommandCoordinator.generateAtMessage(waiters, message)
+                : message,
+        );
+    };
 
-        if (allWaiters.length === 0) {
-            return;
-        }
-
-        if (allWaiters.length > 1) {
-            await ctx.reply(
-                serverCommandCache.generateAtMessage(allWaiters, reply),
-            );
-            return;
-        }
-
-        await ctx.reply(reply);
+    try {
+        const apiResult = await groupCommandCoordinator.waitForResult(
+            result.pendingRequest,
+        );
+        const reply = await options.buildReply(apiResult);
+        await replyToWaiters(reply);
     } catch (error) {
         logger.error(
             `[${options.command}] Shared command execute failed:`,
             error,
         );
-        await ctx.reply(options.failureMessage || '请求失败，请稍后重试');
+        await replyToWaiters(options.failureMessage || '请求失败，请稍后重试');
     }
 }
 
@@ -194,7 +192,7 @@ export const ServersCommandRegister = createServerCommand(
                 );
                 const historicalServers =
                     serverHistoryCache.getDisappearedServers(serverList);
-                printServerListPng(
+                await printServerListPng(
                     serverList,
                     historicalServers,
                     SERVERS_OUTPUT_FILE,
@@ -259,7 +257,7 @@ export const WhereIsCommandRegister: IRegister = {
 
         const userResults = getUserMatchedList(targetName, serverList);
 
-        printUserInServerListPng(
+        await printUserInServerListPng(
             userResults.results,
             targetName,
             userResults.total,
@@ -297,7 +295,7 @@ export const PlayersCommandRegister = createServerCommand(
                 );
                 const historicalServers =
                     serverHistoryCache.getDisappearedServers(serverList);
-                printPlayersPng(
+                await printPlayersPng(
                     serverList,
                     historicalServers,
                     PLAYERS_OUTPUT_FILE,
@@ -366,7 +364,7 @@ export const MapsCommandRegister: IRegister = {
                 );
                 const servers = getServersForMap(result.map.id, serverList);
 
-                printMapDetailPng(
+                await printMapDetailPng(
                     result.map,
                     servers,
                     MAP_DETAIL_OUTPUT_FILE,
@@ -379,10 +377,10 @@ export const MapsCommandRegister: IRegister = {
                     result.map.id,
                 );
 
-                let reply = `[CQ:image,file=${getStaticHttpPath(ctx.env, MAP_DETAIL_OUTPUT_FILE)},cache=0,c=8]`;
+                let reply = cqImageFile(ctx.env, MAP_DETAIL_OUTPUT_FILE);
 
                 if (mapImageUrl) {
-                    reply += `\n[CQ:image,file=${mapImageUrl},cache=0,c=8]`;
+                    reply += `\n${cqImageUrl(mapImageUrl, { cache: 0, c: 8 })}`;
                 }
 
                 await ctx.reply(reply);
@@ -397,7 +395,7 @@ export const MapsCommandRegister: IRegister = {
                     const serverList = await queryAllServers(
                         ctx.env.SERVERS_MATCH_REGEX,
                     );
-                    printMapPng(
+                    await printMapPng(
                         serverList,
                         MapsDataService.getInst().getData(),
                         MAPS_OUTPUT_FILE,
@@ -441,17 +439,14 @@ export const AnalyticsCommandRegister: IRegister = {
             cdMs: 5000,
             apiCall: async (): Promise<ApiResult> => {
                 const view = buildAnalyticsView();
-                printAnalyticsPng(
+                await printAnalyticsPng(
                     view,
                     ANALYTICS_OVERVIEW_OUTPUT_FILE,
                 );
                 return { serverList: [], outputFile: ANALYTICS_OVERVIEW_OUTPUT_FILE };
             },
             buildReply: async (apiResult) =>
-                `[CQ:image,file=${getStaticHttpPath(
-                    ctx.env,
-                    apiResult.outputFile,
-                )},cache=0,c=8]`,
+                cqImageFile(ctx.env, apiResult.outputFile),
             firstRequesterMessage: '正在生成统计总览, 请稍后...',
             pendingMessage: '统计总览正在生成中，请稍后...',
             failureMessage: '生成统计总览失败，请稍后重试',
@@ -492,7 +487,7 @@ export const ServerOverviewCommandRegister = createServerCommand(
                 const stats = aggregateOverview(serverList);
                 const trend = readTrendSummary();
                 const latencyMap = await pingServers(serverList);
-                printServerOverviewPng(
+                await printServerOverviewPng(
                     stats,
                     trend,
                     serverList,

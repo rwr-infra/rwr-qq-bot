@@ -1,18 +1,12 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { logger } from '../../../utils/logger';
 import {
     IAnalyticsViewData,
+    IServerAnalyticsFile,
     IServerAnalyticsRecord,
     IServerAnalyticsSummary,
 } from '../types/types';
-import { ANALYSIS_SERVER_DATA_FILE, OUTPUT_FOLDER } from '../types/constants';
+import { ANALYSIS_SERVER_DATA_FILE } from '../types/constants';
 import { readDaysSeries, readTrendSummary } from './overview';
-
-interface IServerAnalyticsFile {
-    lastUpdateTime: number;
-    records: IServerAnalyticsRecord[];
-}
+import { readAnalyticsJson } from './analyticsStore';
 
 /**
  * 读取各服务器 24h 统计文件(analysis_server.json)
@@ -20,31 +14,18 @@ interface IServerAnalyticsFile {
  */
 const readServerAnalyticsFile = (): IServerAnalyticsFile => {
     const empty: IServerAnalyticsFile = { lastUpdateTime: 0, records: [] };
-    const filePath = path.join(
-        process.cwd(),
-        OUTPUT_FOLDER,
-        `./${ANALYSIS_SERVER_DATA_FILE}`,
+    const parsed = readAnalyticsJson<IServerAnalyticsFile>(
+        ANALYSIS_SERVER_DATA_FILE,
     );
 
-    if (!fs.existsSync(filePath)) {
+    if (!parsed || !Array.isArray(parsed.records)) {
         return empty;
     }
 
-    try {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const parsed = JSON.parse(content) as IServerAnalyticsFile;
-        if (!parsed || !Array.isArray(parsed.records)) {
-            return empty;
-        }
-        return {
-            lastUpdateTime: parsed.lastUpdateTime ?? 0,
-            records: parsed.records,
-        };
-    } catch (e) {
-        logger.error('> readServerAnalyticsFile error');
-        logger.error(e);
-        return empty;
-    }
+    return {
+        lastUpdateTime: parsed.lastUpdateTime ?? 0,
+        records: parsed.records,
+    };
 };
 
 /**

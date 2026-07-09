@@ -1,6 +1,6 @@
 import { IRegister } from '../../types';
 import { parseIgnoreSpace } from '../../utils/cmd';
-import { getStaticHttpPath } from '../../utils/cmdreq';
+import { cqImageFile } from '../../utils/cqCode';
 import { getAIQAMatchRes } from './utils';
 import { AiCanvas } from './aiCanvas';
 
@@ -38,9 +38,9 @@ export const AiCommandRegister: IRegister = {
 
         const fileName = `ai-${ctx.event.user_id}.png`;
         const canvas = new AiCanvas(query, answer, fileName);
-        canvas.render();
+        await canvas.render();
 
-        const replyText = `[CQ:image,file=${getStaticHttpPath(ctx.env, fileName)},cache=0,c=8]`;
+        const replyText = cqImageFile(ctx.env, fileName);
         await ctx.reply(replyText);
     },
 };

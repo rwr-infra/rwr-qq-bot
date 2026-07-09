@@ -84,30 +84,30 @@ afterEach(() => {
 });
 
 describe('servers canvas print utilities', () => {
-    it('prints server list png', () => {
+    it('prints server list png', async () => {
         const fileName = 'servers-test.png';
-        const outputPath = printServerListPng(servers, [], fileName);
+        const outputPath = await printServerListPng(servers, [], fileName);
         expect(outputPath.endsWith(path.join('out', fileName))).toBe(true);
         expect(fs.existsSync(outputPath)).toBe(true);
     });
 
-    it('prints players png', () => {
+    it('prints players png', async () => {
         const fileName = 'players-test.png';
-        const outputPath = printPlayersPng(servers, [], fileName);
+        const outputPath = await printPlayersPng(servers, [], fileName);
         expect(outputPath.endsWith(path.join('out', fileName))).toBe(true);
         expect(fs.existsSync(outputPath)).toBe(true);
     });
 
-    it('prints maps png', () => {
+    it('prints maps png', async () => {
         const fileName = 'maps-test.png';
-        const outputPath = printMapPng(servers, maps, fileName);
+        const outputPath = await printMapPng(servers, maps, fileName);
         expect(outputPath.endsWith(path.join('out', fileName))).toBe(true);
         expect(fs.existsSync(outputPath)).toBe(true);
     });
 
-    it('prints whereis png', () => {
+    it('prints whereis png', async () => {
         const fileName = 'whereis-test.png';
-        const outputPath = printUserInServerListPng(
+        const outputPath = await printUserInServerListPng(
             matched,
             'alice',
             1,

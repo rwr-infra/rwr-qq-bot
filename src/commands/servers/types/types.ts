@@ -66,6 +66,15 @@ export interface IServerAnalyticsRecord {
     daysData?: IServerAnalyticsHourlyData[]; // 该服务器近7日逐日峰值序列(date="M/D")，旧文件缺失时按 [] 处理
 }
 
+/**
+ * analysis_server.json 的磁盘结构(各服务器统计文件)。
+ * 由 AnalysticsServerTask 写入、analytics.ts 读取——单一声明，避免写读两端漂移。
+ */
+export interface IServerAnalyticsFile {
+    lastUpdateTime: number;
+    records: IServerAnalyticsRecord[];
+}
+
 export interface IMapImageConfigItem {
     path: string;
     image: string;

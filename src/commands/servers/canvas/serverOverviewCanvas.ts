@@ -1,5 +1,5 @@
 import { createCanvas, Canvas2DContext } from '../../../services/canvasBackend';
-import { BaseCanvas } from '../../../services/baseCanvas';
+import { BaseCanvas, CanvasSize } from '../../../services/baseCanvas';
 import { buildCanvasFont } from '../../../services/canvasFonts';
 import { CANVAS_COLORS } from '../../../services/canvasTheme';
 import {
@@ -646,18 +646,20 @@ export class ServerOverviewCanvas extends BaseCanvas {
         return y + this.historicalServers.length * OFFLINE_ROW_H + SECTION_GAP;
     }
 
-    render() {
-        this.record();
+    protected measure(): CanvasSize {
         this.renderHeight = this.computeHeight();
+        return { width: WIDTH, height: this.renderHeight };
+    }
 
-        const canvas = createCanvas(WIDTH, this.renderHeight);
-        const ctx = canvas.getContext('2d');
+    protected getFileName(): string {
+        return this.fileName;
+    }
 
-        // 背景
-        ctx.fillStyle = COLOR_BG;
-        ctx.fillRect(0, 0, WIDTH, this.renderHeight);
-        this.renderBgImg(ctx, WIDTH, this.renderHeight);
+    protected getBgColor(): string {
+        return COLOR_BG;
+    }
 
+    protected paint(ctx: Canvas2DContext): number {
         // 段一 概览
         let y = PAD;
         y = this.renderTitle(ctx, y);
@@ -668,10 +670,6 @@ export class ServerOverviewCanvas extends BaseCanvas {
         y = this.renderServerDetail(ctx, y);
         y = this.renderOfflineSection(ctx, y);
 
-        // 段三 页脚
-        this.renderStartY = y;
-        this.renderFooter(ctx);
-
-        return super.writeFile(canvas, this.fileName);
+        return y;
     }
 }

@@ -61,16 +61,16 @@ describe('MapsCanvas', () => {
         expect(mapsCanvas.fileName).toBe('test.png');
     });
 
-    it('should render without throwing and produce positive dimensions', () => {
-        const outPath = mapsCanvas.render();
+    it('should render without throwing and produce positive dimensions', async () => {
+        const outPath = await mapsCanvas.render();
         expect(outPath).toContain('test.png');
         // 一张活跃地图卡片 + 一张空闲地图 chip → 宽高均应为正
         expect(mapsCanvas.renderWidth).toBeGreaterThan(0);
         expect(mapsCanvas.renderHeight).toBeGreaterThan(0);
     });
 
-    it('should render with empty data without throwing', () => {
+    it('should render with empty data without throwing', async () => {
         const empty = new MapsCanvas([], [], 'empty.png');
-        expect(() => empty.render()).not.toThrow();
+        await expect(empty.render()).resolves.toContain('empty.png');
     });
 });

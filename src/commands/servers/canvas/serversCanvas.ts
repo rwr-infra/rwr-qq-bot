@@ -6,7 +6,7 @@ import {
     getMapShortName,
     formatMapDuration,
 } from '../utils/utils';
-import { BaseCanvas } from '../../../services/baseCanvas';
+import { BaseCanvas, CanvasSize } from '../../../services/baseCanvas';
 import { buildCanvasFont } from '../../../services/canvasFonts';
 import {
     roundRectPath,
@@ -369,25 +369,24 @@ export class ServersCanvas extends BaseCanvas {
         return y;
     }
 
-    render() {
-        this.record();
+    protected measure(): CanvasSize {
         this.prepare();
+        return { width: this.renderWidth, height: this.renderHeight };
+    }
 
-        const canvas = createCanvas(this.renderWidth, this.renderHeight);
-        const ctx = canvas.getContext('2d');
+    protected getFileName(): string {
+        return this.fileName;
+    }
 
-        ctx.fillStyle = COLOR_BG;
-        ctx.fillRect(0, 0, this.renderWidth, this.renderHeight);
-        this.renderBgImg(ctx, this.renderWidth, this.renderHeight);
+    protected getBgColor(): string {
+        return COLOR_BG;
+    }
 
+    protected paint(ctx: Canvas2DContext): number {
         let y = PAD;
         y = this.renderTitle(ctx, y);
         y = this.renderServerCards(ctx, y);
         y = this.renderOfflineSection(ctx, y);
-
-        this.renderStartY = y;
-        this.renderFooter(ctx);
-
-        return super.writeFile(canvas, this.fileName);
+        return y;
     }
 }

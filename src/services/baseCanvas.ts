@@ -4,8 +4,14 @@ import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { GlobalEnv } from '../types';
 import { CanvasImgService } from './canvasImg.service';
-import { Canvas2DContext, CanvasLike, toPngBuffer } from './canvasBackend';
+import {
+    Canvas2DContext,
+    CanvasLike,
+    createCanvas,
+    toPngBuffer,
+} from './canvasBackend';
 import { buildCanvasFont } from './canvasFonts';
+import { CANVAS_COLORS } from './canvasTheme';
 import { asImageRenderError } from './imageRenderErrors';
 import { logImageRenderError } from './imageRenderLogger';
 
@@ -30,15 +36,145 @@ const getFixedFooterTime = () => {
 
 const OUTPUT_FOLDER = 'out';
 
-export const CN_REGEX = new RegExp('[\u4E00-\u9FA5]');
+export const CN_REGEX = new RegExp('[一-龥]');
 
-export class BaseCanvas {
+/** 画布尺寸——由子类的 measure() 计算返回 */
+export interface CanvasSize {
+    width: number;
+    height: number;
+}
+
+/**
+ * 文件写出接口——把 fs 写盘从画布逻辑中分离出来的接缝(seam)。
+ * 生产用 {@link defaultCanvasFileWriter}(真实 fs)，测试可注入假实现以避免触盘。
+ */
+export interface CanvasFileWriter {
+    write(canvas: CanvasLike, fileName: string): string;
+}
+
+/** 默认实现: 编码为 PNG 并写入 out/ 目录，带结构化错误包装 */
+class FsCanvasFileWriter implements CanvasFileWriter {
+    write(canvas: CanvasLike, fileName: string): string {
+        let buffer: Buffer;
+        try {
+            buffer = toPngBuffer(canvas);
+        } catch (err) {
+            const wrapped = asImageRenderError(err, {
+                code: 'IMAGE_ENCODE_FAILED',
+                message: 'Failed to encode canvas to PNG',
+                context: { scene: 'baseCanvas:encode', fileName },
+            });
+            logImageRenderError(wrapped);
+            throw wrapped;
+        }
+
+        // recursive: 幂等建目录，并发渲染时不会因 EEXIST 抛错
+        fs.mkdirSync(OUTPUT_FOLDER, { recursive: true });
+
+        const outputPath = path.join(
+            process.cwd(),
+            OUTPUT_FOLDER,
+            `./${fileName}`,
+        );
+
+        try {
+            fs.writeFileSync(outputPath, buffer);
+        } catch (err) {
+            const wrapped = asImageRenderError(err, {
+                code: 'IMAGE_WRITE_FAILED',
+                message: 'Failed to write PNG output',
+                context: { scene: 'baseCanvas:write', fileName },
+            });
+            logImageRenderError(wrapped);
+            throw wrapped;
+        }
+
+        return outputPath;
+    }
+}
+
+export const defaultCanvasFileWriter: CanvasFileWriter = new FsCanvasFileWriter();
+
+export abstract class BaseCanvas {
     startTime?: Dayjs;
 
     totalFooter = '';
     renderStartY = 0;
 
-    constructor() {}
+    protected readonly fileWriter: CanvasFileWriter;
+
+    constructor(deps?: { fileWriter?: CanvasFileWriter }) {
+        this.fileWriter = deps?.fileWriter ?? defaultCanvasFileWriter;
+    }
+
+    // ------------------------------------------------------------------
+    // 子类钩子(模板方法模式)
+    // ------------------------------------------------------------------
+
+    /** 计算画布宽高；可为异步(如需先加载图片素材，可在此 await 并存入实例字段) */
+    protected abstract measure(): CanvasSize | Promise<CanvasSize>;
+
+    /** 绘制内容；返回 footer 的起始 Y 坐标(即 renderStartY) */
+    protected abstract paint(
+        ctx: Canvas2DContext,
+        size: CanvasSize,
+    ): number | Promise<number>;
+
+    /** 输出文件名 */
+    protected abstract getFileName(): string;
+
+    /** 背景填充色(renderBgImg 之前)。默认暖棕底，子类可覆盖 */
+    protected getBgColor(): string {
+        return CANVAS_COLORS.BG;
+    }
+
+    /** 错误上下文中的 scene 标识，默认类名 */
+    protected getRenderScene(): string {
+        return this.constructor.name;
+    }
+
+    /** 错误上下文中的输入摘要(可选) */
+    protected getInputSummary(): string | undefined {
+        return undefined;
+    }
+
+    /**
+     * 统一的渲染生命周期(模板方法):
+     * record → measure → 建画布 → 填底 + 背景图 → paint → footer → 写文件。
+     * 所有子类共享此骨架，异常统一包装为 IMAGE_RENDER_FAILED。
+     */
+    async render(): Promise<string> {
+        try {
+            this.record();
+
+            const size = await this.measure();
+
+            const canvas = createCanvas(size.width, size.height);
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = this.getBgColor();
+            ctx.fillRect(0, 0, size.width, size.height);
+            this.renderBgImg(ctx, size.width, size.height);
+
+            const footerY = await this.paint(ctx, size);
+            this.renderStartY = footerY;
+            this.renderFooter(ctx);
+
+            return this.writeFile(canvas, this.getFileName());
+        } catch (err) {
+            const wrapped = asImageRenderError(err, {
+                code: 'IMAGE_RENDER_FAILED',
+                message: `${this.getRenderScene()} canvas render failed`,
+                context: {
+                    scene: this.getRenderScene(),
+                    fileName: this.getFileName(),
+                    inputSummary: this.getInputSummary(),
+                },
+            });
+            logImageRenderError(wrapped);
+            throw wrapped;
+        }
+    }
 
     calcCanvasTextWidth(text: string, base: number): number {
         let countWidth = 0;
@@ -103,42 +239,7 @@ export class BaseCanvas {
         this.startTime = dayjs();
     }
 
-    writeFile(canvas: CanvasLike, fileName: string) {
-        let buffer: Buffer;
-        try {
-            buffer = toPngBuffer(canvas);
-        } catch (err) {
-            const wrapped = asImageRenderError(err, {
-                code: 'IMAGE_ENCODE_FAILED',
-                message: 'Failed to encode canvas to PNG',
-                context: { scene: 'baseCanvas:encode', fileName },
-            });
-            logImageRenderError(wrapped);
-            throw wrapped;
-        }
-
-        if (!fs.existsSync(OUTPUT_FOLDER)) {
-            fs.mkdirSync(OUTPUT_FOLDER);
-        }
-
-        const outputPath = path.join(
-            process.cwd(),
-            OUTPUT_FOLDER,
-            `./${fileName}`,
-        );
-
-        try {
-            fs.writeFileSync(outputPath, buffer);
-        } catch (err) {
-            const wrapped = asImageRenderError(err, {
-                code: 'IMAGE_WRITE_FAILED',
-                message: 'Failed to write PNG output',
-                context: { scene: 'baseCanvas:write', fileName },
-            });
-            logImageRenderError(wrapped);
-            throw wrapped;
-        }
-
-        return outputPath;
+    writeFile(canvas: CanvasLike, fileName: string): string {
+        return this.fileWriter.write(canvas, fileName);
     }
 }
