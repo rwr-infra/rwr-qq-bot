@@ -10,6 +10,7 @@ import {
     getWhereisHeaderSectionText,
     getWhereisFooterSectionText,
     getPlayersInServer,
+    parseServerListFromString,
     findMapByQuery,
     getServersForMap,
     buildMapDetailReply,
@@ -191,6 +192,73 @@ describe('getWhereisFooterSectionText', () => {
         expect(getWhereisFooterSectionText(999)).toBe(
             '共计 999 位玩家结果'
         );
+    });
+});
+
+const buildServerXml = (name: string, players: string[]): string => `
+<server>
+<name>${name}</name>
+<address>49.235.149.243</address>
+<port>1235</port>
+<map_id>media/packages/GFL_Castling/maps/Chapter02</map_id>
+<map_name></map_name>
+<bots>150</bots>
+<country>China</country>
+<current_players>${players.length}</current_players>
+<timestamp>1790165329</timestamp>
+<version>1.98.1</version>
+<dedicated>1</dedicated>
+<mod>1</mod>
+${players.map((p) => `<player>${p}</player>`).join('\n')}
+<comment>QQ Group: 706234535</comment>
+<url></url>
+<max_players>15</max_players>
+<mode>Castling</mode>
+<realm></realm>
+</server>`;
+
+describe('parseServerListFromString', () => {
+    it.concurrent('should keep numeric player names as raw strings', () => {
+        const xml = `<result value='1'>${buildServerXml('[Castling-4]', [
+            'HONGQI',
+            '37813',
+            '007',
+            '1E5',
+            ':D2333',
+        ])}${buildServerXml('12345', ['0x1F'])}</result>`;
+
+        const [first, second] = parseServerListFromString(xml);
+
+        expect(first.player).toEqual([
+            'HONGQI',
+            '37813',
+            '007',
+            '1E5',
+            ':D2333',
+        ]);
+        expect(first.playersCount).toBe(5);
+        expect(getPlayersInServer(first)).toEqual([
+            'HONGQI',
+            '37813',
+            '007',
+            '1E5',
+            ':D2333',
+        ]);
+        expect(first.port).toBe(1235);
+        expect(first.current_players).toBe(5);
+
+        expect(second.name).toBe('12345');
+        expect(getPlayersInServer(second)).toEqual(['0x1F']);
+    });
+
+    it.concurrent('should return empty players for empty player tag', () => {
+        const xml = `<result value='1'>${buildServerXml('A', [''])}${buildServerXml('B', [])}</result>`;
+        const servers = parseServerListFromString(xml);
+
+        servers.forEach((s) => {
+            expect(getPlayersInServer(s)).toEqual([]);
+            expect(s.playersCount).toBe(0);
+        });
     });
 });
 
