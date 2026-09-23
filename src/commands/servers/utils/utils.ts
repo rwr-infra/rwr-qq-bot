@@ -22,6 +22,24 @@ const axiosInst = axios.create({
 export const CN_REGEX = new RegExp('[\u4E00-\u9FA5]');
 
 /**
+ * Text tags kept as raw strings, otherwise XMLParser coerces numeric-looking
+ * values (e.g. player `37813`, `007`, `1e5`) into numbers
+ */
+const STRING_TAGS = new Set([
+    'name',
+    'address',
+    'map_id',
+    'map_name',
+    'country',
+    'version',
+    'player',
+    'comment',
+    'url',
+    'mode',
+    'realm',
+]);
+
+/**
  * Get players list string array
  * @param server server item
  * @returns player list
@@ -71,7 +89,11 @@ const queryServersRaw = async (params: {
 export const parseServerListFromString = (
     resString: string,
 ): OnlineServerItem[] => {
-    const parser = new XMLParser();
+    const parser = new XMLParser({
+        // returning null tells XMLParser to skip value parsing
+        tagValueProcessor: (tagName, val) =>
+            STRING_TAGS.has(tagName) ? null : val,
+    });
     const res = parser.parse(resString) as Res;
 
     return res.result.server.map((s) => ({
@@ -402,18 +424,8 @@ export const getMapTextInCanvas = (m: IMapDataItem) => {
  * @param server server item
  * @returns players name list
  */
-export const getPlayersInServer = (server: OnlineServerItem): string[] => {
-    let playersArr: string[] = [];
-    if (typeof server.player === 'string') {
-        playersArr.push(server.player);
-    } else if (Array.isArray(server.player)) {
-        playersArr = server.player.filter(
-            (p): p is string => typeof p === 'string',
-        );
-    }
-
-    return playersArr;
-};
+export const getPlayersInServer = (server: OnlineServerItem): string[] =>
+    getCorrectPlayersList(server);
 
 export type MapQueryResult =
     | { type: 'exact'; map: IMapDataItem }
